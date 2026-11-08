@@ -1,200 +1,202 @@
 # SGR-M — Sistema de Gestão de Rodeiros e Motores
 
 **Projeto Acadêmico — Laboratório de Engenharia de Software**  
-**Fatec São Paulo | Curso de Análise e Desenvolvimento de Sistemas | Grupo 10**
+**Fatec São Paulo | Análise e Desenvolvimento de Sistemas | Grupo 10**
+
+> **Aviso:** projeto exclusivamente acadêmico, desenvolvido com dados fictícios. Não representa um sistema oficial do Metrô de São Paulo e não substitui procedimentos técnicos, avaliações de manutenção ou regras operacionais de segurança.
 
 ## 1. Sobre o projeto
 
-O **SGR-M (Sistema de Gestão de Rodeiros e Motores)** é uma aplicação web desenvolvida como projeto acadêmico da disciplina de Laboratório de Engenharia de Software da Fatec São Paulo.
+O **SGR-M (Sistema de Gestão de Rodeiros e Motores)** é uma aplicação web acadêmica para apoiar o gerenciamento de equipamentos ferroviários, especialmente rodeiros e motores de tração. A proposta reúne a identificação por número de série, a localização dos equipamentos na composição ferroviária, o histórico de instalações e retiradas e, nas próximas entregas, o acompanhamento de pendências e condições de manutenção.
 
-O sistema tem como objetivo apoiar o gerenciamento de equipamentos utilizados na manutenção ferroviária, com foco no controle de rodeiros e motores de tração, na rastreabilidade dos equipamentos e no acompanhamento de pendências técnicas.
-
-A proposta surgiu da necessidade de organizar e consolidar informações sobre equipamentos cuja condição pode impactar a segurança, a confiabilidade e a disponibilidade operacional dos trens.
-
-O projeto busca oferecer uma ferramenta para centralizar registros, acompanhar condições técnicas e auxiliar na identificação de prioridades de manutenção.
-
-**Importante:** trata-se de um projeto acadêmico, desenvolvido exclusivamente com dados fictícios. Não representa um sistema oficial do Metrô de São Paulo e não substitui procedimentos técnicos ou operacionais de segurança.
+O sistema procura consolidar informações que auxiliem a rastreabilidade e a identificação de prioridades, sem substituir a decisão técnica de profissionais responsáveis.
 
 ## 2. Objetivos
 
-- Permitir o cadastro e a identificação individual de rodeiros e motores por número de série.
-- Organizar os equipamentos conforme a estrutura de frotas, trens, carros e eixos.
-- Manter o histórico de instalações, retiradas e substituições.
-- Registrar e acompanhar pendências de manutenção.
-- Importar informações técnicas por arquivos CSV.
-- Identificar equipamentos que exigem maior atenção conforme regras de negócio.
-- Disponibilizar consultas, indicadores e informações consolidadas para apoiar a gestão da manutenção.
+- Identificar individualmente rodeiros e motores por número de série.
+- Organizar a estrutura **Frota → Trem → Carro → Eixo**.
+- Preservar o histórico de instalações, retiradas e substituições.
+- Registrar e acompanhar pendências técnicas.
+- Importar periodicidade percentual e diâmetros LR/LO por CSV.
+- Ordenar equipamentos conforme as regras de priorização do projeto.
+- Disponibilizar consultas e indicadores para apoio à gestão.
+- Restringir o acesso às funcionalidades conforme o perfil do usuário.
 
 ## 3. Tecnologias utilizadas
 
-| Tecnologia | Aplicação |
+| Tecnologia | Utilização |
 |---|---|
 | PHP 8.3 | Linguagem de programação |
-| Laravel 12 | Framework backend |
+| Laravel 12 | Framework backend, autenticação e rotas |
 | MySQL 8.4 | Banco de dados relacional |
-| Blade | Templates de interface |
-| JavaScript | Interatividade das páginas |
-| HTML e CSS | Estrutura e apresentação das interfaces |
+| Eloquent | Models e relacionamentos |
+| Blade, HTML e CSS | Interfaces web |
+| JavaScript | Interatividade prevista para os módulos |
 | Laragon | Ambiente de desenvolvimento local |
-| Composer | Gerenciamento de dependências PHP |
-| Node.js e npm | Gerenciamento dos recursos frontend |
-| Git e GitHub | Versionamento e desenvolvimento colaborativo |
+| Composer | Dependências PHP |
+| Node.js e npm | Recursos frontend |
+| Git e GitHub | Versionamento e colaboração |
 
-## 4. Funcionalidades previstas
+## 4. Funcionalidades do sistema
 
-### 4.1. Cadastro de equipamentos
+### 4.1. Cadastro e consulta de equipamentos — em desenvolvimento
 
-Cadastro de frotas, trens, carros, eixos, rodeiros e motores.
+Cadastro de frotas, trens, carros, eixos, rodeiros e motores. Cada equipamento possui número de série único e pode ser acompanhado independentemente da posição de instalação. **A estrutura do banco e os models já foram implementados; as telas de cadastro e consulta ainda estão pendentes.**
 
-Cada rodeiro e motor será identificado por um número de série único, permitindo sua rastreabilidade independentemente da posição em que esteja instalado.
+### 4.2. Gestão de pendências — planejada
 
-### 4.2. Gestão de pendências
+Registro e acompanhamento de pendências técnicas classificadas como **crítica, alta, média ou baixa**.
 
-Registro e acompanhamento de pendências técnicas relacionadas aos equipamentos.
+### 4.3. Importação de dados CSV — planejada
 
-As pendências poderão receber classificações de prioridade:
+Importação e validação de informações sobre **periodicidade percentual** dos rodeiros e **diâmetros LR e LO**.
 
-- Crítica;
-- Alta;
-- Média;
-- Baixa.
+### 4.4. Priorização de equipamentos — planejada
 
-### 4.3. Importação de dados CSV
+O ranking seguirá a seguinte ordem de precedência:
 
-Importação de informações técnicas provenientes de arquivos CSV, incluindo:
+1. Pendências críticas.
+2. Pendências altas.
+3. Pendências médias.
+4. Pendências baixas.
+5. Rodeiros com periodicidade superior a 100%.
+6. Rodeiros com menor diâmetro LR/LO inferior a 745 mm.
 
-- Periodicidade percentual dos rodeiros;
-- Diâmetro das rodas LR e LO.
+Esses limites são parâmetros acadêmicos e **não representam critérios operacionais oficiais**.
 
-Os arquivos serão validados antes do processamento para reduzir o risco de inconsistências nos registros.
+### 4.5. Movimentação de equipamentos — parcialmente estruturada
 
-### 4.4. Priorização dos equipamentos
+A modelagem permite registrar instalações, retiradas e substituições e preservar o histórico. Os **serviços e interfaces de movimentação** ainda serão implementados com validações e transações de banco de dados.
 
-O sistema apresentará um ranking dos equipamentos que necessitam de atenção, seguindo uma ordem de precedência definida nas regras de negócio:
+### 4.6. Dashboard e indicadores — parcialmente implementado
 
-1. Pendências críticas;
-2. Pendências altas;
-3. Pendências médias;
-4. Pendências baixas;
-5. Rodeiros com periodicidade superior a 100%;
-6. Rodeiros com diâmetro inferior a 745 mm.
+Foi criada uma **página inicial autenticada**, com identificação do usuário e cartões informativos dos módulos. Os indicadores operacionais reais e as consultas consolidadas permanecem pendentes.
 
-Os limites de periodicidade e diâmetro são parâmetros adotados para o projeto acadêmico, não devendo ser interpretados como limites operacionais oficiais.
+### 4.7. Autenticação e controle de acesso — implementada
 
-### 4.5. Movimentação de equipamentos
+A **Entrega 02** implementou:
 
-Registro de instalações, retiradas e substituições de rodeiros e motores.
+- Login e logout com sessões nativas do Laravel.
+- Validação de credenciais e armazenamento de senhas por hash.
+- Regeneração de sessão após login; invalidação de sessão e renovação do token CSRF no logout.
+- Proteção de rotas com os middlewares `auth` e `guest`.
+- Limitação inicial de tentativas de login com `throttle`.
+- Campo `perfil` na tabela `users` e métodos auxiliares no Model `User`.
+- Middleware `VerificarPerfil`, registrado com o alias `perfil`.
+- Interfaces Blade de login, layout compartilhado e dashboard inicial.
+- Seeder para usuários fictícios de teste em ambiente local.
 
-O sistema deverá preservar o histórico dos equipamentos e impedir instalações simultâneas incompatíveis.
+**Perfis disponíveis:** `administrador`, `gestor` e `tecnico`.
 
-### 4.6. Dashboard e indicadores
+A matriz abaixo representa as **permissões planejadas para os módulos futuros**. O middleware de verificação já existe, mas as restrições específicas serão aplicadas à medida que cada módulo for desenvolvido.
 
-Painel de acompanhamento com informações consolidadas sobre equipamentos, pendências e condições de manutenção.
-
-### 4.7. Autenticação e controle de acesso
-
-Controle de acesso às funcionalidades conforme os perfis e permissões definidos para a aplicação.
+| Funcionalidade | Administrador | Gestor | Técnico |
+|---|:---:|:---:|:---:|
+| Consultar equipamentos | Sim | Sim | Sim |
+| Cadastrar equipamentos | Sim | Não | Não |
+| Registrar pendências | Sim | Sim | Sim |
+| Movimentar equipamentos | Sim | Não | Sim |
+| Visualizar indicadores | Sim | Sim | Sim |
+| Gerenciar usuários | Sim | Não | Não |
 
 ## 5. Estrutura do banco de dados
 
-A modelagem inicial contempla oito tabelas específicas:
+A modelagem inicial contém oito tabelas específicas da aplicação:
 
-| Tabela | Descrição |
+| Tabela | Finalidade |
 |---|---|
 | `frotas` | Cadastro das frotas |
 | `trens` | Trens vinculados às frotas |
 | `carros` | Carros vinculados aos trens |
-| `eixos` | Posições de eixo dos carros |
-| `rodeiros` | Cadastro dos rodeiros por número de série |
-| `motores` | Cadastro dos motores por número de série |
-| `instalacoes_rodeiros` | Histórico de instalação e retirada dos rodeiros |
-| `instalacoes_motores` | Histórico de instalação e retirada dos motores |
+| `eixos` | Posições dos eixos dos carros |
+| `rodeiros` | Rodeiros identificados por número de série |
+| `motores` | Motores identificados por número de série |
+| `instalacoes_rodeiros` | Histórico de instalação e retirada de rodeiros |
+| `instalacoes_motores` | Histórico de instalação e retirada de motores |
+
+Além dessas tabelas, o Laravel mantém as estruturas necessárias à aplicação, incluindo `users`, `sessions`, `cache` e `jobs`. A tabela `users` recebeu o campo `perfil` na Entrega 02.
 
 ### 5.1. Relacionamentos
 
-A estrutura hierárquica principal é:
-
 ```text
 Frota
- └── Trem
-      └── Carro
-           └── Eixo
-                ├── Instalações de Rodeiros
-                │    └── Rodeiro
-                └── Instalações de Motores
-                     └── Motor
+└── Trem
+    └── Carro
+        └── Eixo
+            ├── Instalações de rodeiros ── Rodeiro
+            └── Instalações de motores  ── Motor
 ```
-
-Os equipamentos são cadastrados independentemente das posições em que estão instalados.
 
 ### 5.2. Integridade e rastreabilidade
 
-O banco de dados possui restrições para garantir:
+A modelagem inclui restrições para:
 
-- Número de série único para cada equipamento.
-- Apenas um rodeiro ativo em cada posição de eixo.
-- Apenas um motor ativo em cada posição de eixo.
-- Impossibilidade de um mesmo equipamento ocupar duas posições simultaneamente.
-- Preservação das instalações anteriores no histórico.
+- Garantir número de série único para cada equipamento.
+- Impedir dois rodeiros ativos em um mesmo eixo ou um mesmo rodeiro ativo em dois eixos.
+- Impedir dois motores ativos em um mesmo eixo ou um mesmo motor ativo em dois eixos.
+- Preservar registros de instalações encerradas.
 
-As restrições de instalações ativas utilizam colunas geradas e índices únicos no MySQL.
+As restrições de exclusividade de instalações ativas utilizam **colunas geradas e índices únicos no MySQL**. Elas não substituem as validações e transações a serem implementadas nos serviços da aplicação.
 
 ## 6. Status do desenvolvimento
 
-### Implementado
+### Entregas
 
-- [x] Criação do repositório e configuração do Git.
-- [x] Configuração inicial do Laravel.
-- [x] Conexão com o MySQL.
-- [x] Modelagem das oito tabelas principais.
-- [x] Criação dos Models Eloquent.
-- [x] Implementação dos relacionamentos.
-- [x] Restrições de integridade das instalações ativas.
-- [x] Testes manuais de cadastro e relacionamento.
-- [x] Testes manuais de instalação e substituição.
-- [x] Verificação da preservação dos históricos.
+| Entrega | Escopo | Status |
+|---|---|---|
+| 01 | Modelagem inicial do banco, models e integridade | Concluída; testes manuais realizados |
+| 02 | Autenticação e controle de acesso por perfis | Implementada; testes manuais aprovados |
+| 03 | Cadastro e consulta de equipamentos | Próxima etapa |
+| Futuras | Movimentações, pendências, importação CSV, priorização e indicadores | Planejadas |
+
+### Concluído
+
+- [x] Configuração do repositório, Laravel e MySQL.
+- [x] Modelagem das oito tabelas e relacionamentos Eloquent.
+- [x] Restrições de unicidade e exclusividade de instalações ativas.
+- [x] Testes manuais de integridade e histórico.
+- [x] Migration do campo `perfil` em `users`.
+- [x] Login, logout e proteção de rotas.
+- [x] Middleware de autorização por perfil.
+- [x] Layout Blade, tela de login e dashboard inicial.
+- [x] Seeder de usuários fictícios para testes locais.
+- [x] Testes manuais de autenticação e autorização para os três perfis.
 
 ### Pendente
 
-- [ ] Implementação das interfaces de cadastro e consulta.
-- [ ] Autenticação e controle de permissões.
+- [ ] Interfaces de cadastro e consulta de equipamentos.
 - [ ] Gestão de pendências técnicas.
-- [ ] Importação de dados CSV.
-- [ ] Regras de priorização e ranking.
-- [ ] Serviços de movimentação de equipamentos.
-- [ ] Dashboard e indicadores.
-- [ ] Seeders com dados fictícios.
-- [ ] Testes automatizados.
-- [ ] Testes de integração e validação final.
+- [ ] Serviços transacionais de movimentação.
+- [ ] Importação e validação de arquivos CSV.
+- [ ] Ranking de priorização.
+- [ ] Indicadores operacionais do dashboard.
+- [ ] Interface administrativa de gerenciamento de usuários.
+- [ ] Testes automatizados e testes finais de integração.
+
+**Nota:** a suíte de testes automatizados foi adiada nesta fase. A aprovação dos testes manuais não equivale a uma auditoria de segurança ou a uma validação completa para produção.
 
 ## 7. Instalação e configuração
 
 ### 7.1. Pré-requisitos
 
-É necessário ter instalado:
-
-- PHP 8.2 ou superior;
-- Composer;
-- MySQL 8.4 ou versão compatível;
-- Node.js e npm;
-- Git;
+- PHP compatível com Laravel 12 (mínimo PHP 8.2; ambiente utilizado: PHP 8.3).
+- Composer.
+- MySQL 8.4 ou versão compatível.
+- Node.js e npm.
+- Git.
 - Laragon ou ambiente equivalente.
 
 ### 7.2. Clonar o repositório
 
-No terminal:
-
 ```bash
 cd C:\laragon\www
-
 git clone https://github.com/DiegoArmelin/sgr-m.git
-
 cd sgr-m
-
-git checkout develop
+git switch develop
+git pull origin develop
 ```
 
-A branch `develop` contém a versão utilizada para integração das funcionalidades em desenvolvimento.
+A branch `develop` é utilizada para integrar as funcionalidades em desenvolvimento. A disponibilidade da Entrega 02 nessa branch depende da conclusão do respectivo Pull Request.
 
 ### 7.3. Instalar dependências
 
@@ -203,37 +205,18 @@ composer install
 npm install
 ```
 
-### 7.4. Configurar o ambiente
+### 7.4. Preparar o ambiente
 
-No Windows, crie o arquivo `.env` a partir do exemplo:
+No Windows:
 
 ```bat
 copy .env.example .env
 ```
 
-Gere a chave da aplicação:
+Configure no `.env` os valores adequados para o computador local, incluindo:
 
-```bash
-php artisan key:generate
-```
-
-### 7.5. Configurar o banco de dados
-
-Crie um banco chamado `sgr_m` no MySQL.
-
-Exemplo:
-
-```sql
-CREATE DATABASE IF NOT EXISTS sgr_m
-CHARACTER SET utf8mb4
-COLLATE utf8mb4_unicode_ci;
-```
-
-Configure no arquivo `.env`:
-
-```env
+```dotenv
 APP_NAME="SGR-M"
-
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
@@ -242,138 +225,116 @@ DB_USERNAME=root
 DB_PASSWORD=
 ```
 
-Altere o usuário e a senha conforme a configuração local.
+Os valores de usuário e senha acima são apenas um **exemplo de configuração local**.
 
-### 7.6. Executar as migrations
+Gere a chave da aplicação:
+
+```bash
+php artisan key:generate
+```
+
+### 7.5. Criar o banco e executar migrations
+
+No MySQL:
+
+```sql
+CREATE DATABASE IF NOT EXISTS sgr_m
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+```
+
+No terminal do projeto:
 
 ```bash
 php artisan config:clear
 php artisan migrate
-```
-
-Para verificar as migrations:
-
-```bash
 php artisan migrate:status
 ```
 
-### 7.7. Executar a aplicação
+**Não execute `migrate:fresh` em um banco com dados que deseja preservar**, pois esse comando recria as tabelas.
 
-Compile os recursos frontend:
+### 7.6. Usuários fictícios para testes locais
+
+Na versão que contém a Entrega 02, o arquivo `database/seeders/UserTestSeeder.php` cria, se ainda não existirem, os seguintes usuários:
+
+| E-mail fictício | Perfil |
+|---|---|
+| `gestor@sgr-m.test` | Gestor |
+| `tecnico@sgr-m.test` | Técnico |
+
+Configure uma senha **exclusiva de desenvolvimento**, com pelo menos 12 caracteres, no `.env` local:
+
+```dotenv
+SGRM_TEST_PASSWORD="defina-aqui-uma-senha-forte-e-exclusiva"
+```
+
+Execute:
+
+```bash
+php artisan config:clear
+php artisan db:seed --class=UserTestSeeder
+```
+
+O seeder não deve ser executado em produção. Ele **não cria o administrador automaticamente**: o usuário administrador utilizado nos testes iniciais foi criado manualmente no ambiente local. Não publique senhas em commits, screenshots ou documentação.
+
+### 7.7. Executar a aplicação
 
 ```bash
 npm run build
-```
-
-Inicie o servidor Laravel:
-
-```bash
 php artisan serve
 ```
 
-Acesse no navegador:
+Acesse `http://127.0.0.1:8000/login`. Em um Laragon configurado com hosts locais, também poderá ser utilizado `http://sgr-m.test/login`.
 
-http://127.0.0.1:8000
-
-**Observação:** nesta fase, a aplicação apresenta a estrutura inicial do Laravel. As interfaces específicas do SGR-M serão implementadas nas próximas etapas.
+O dashboard é protegido: após login válido, a aplicação redireciona para `/dashboard`. O botão **Sair** encerra a sessão.
 
 ## 8. Organização do desenvolvimento no GitHub
-
-O desenvolvimento utiliza o seguinte fluxo de branches:
 
 | Branch | Finalidade |
 |---|---|
 | `main` | Versão estável do projeto |
-| `develop` | Integração das funcionalidades em desenvolvimento |
-| `feature/...` | Desenvolvimento isolado de novas funcionalidades |
-| `fix/...` | Correções de problemas identificados |
+| `develop` | Integração das entregas em desenvolvimento |
+| `feature/...` | Desenvolvimento isolado de funcionalidades |
+| `fix/...` | Correção de defeitos |
+| `docs/...` | Atualização de documentação |
 
-### 8.1. Criar uma branch de funcionalidade
-
-Antes de iniciar uma atividade:
+Fluxo recomendado:
 
 ```bash
-git checkout develop
+git switch develop
 git pull origin develop
-```
-
-Crie a branch:
-
-```bash
-git checkout -b feature/nome-da-funcionalidade
-```
-
-### 8.2. Registrar alterações
-
-Após implementar e testar:
-
-```bash
+git switch -c feature/nome-da-funcionalidade
+# implementar e testar
 git add .
+git diff --cached --check
 git commit -m "feat: descricao da funcionalidade"
-```
-
-Envie ao GitHub:
-
-```bash
 git push -u origin feature/nome-da-funcionalidade
 ```
 
-### 8.3. Abrir um Pull Request
-
-No GitHub, crie um Pull Request com:
-
-**Base:** `develop`  
-**Compare:** branch da funcionalidade
-
-As alterações deverão ser revisadas antes da integração.
-
-Não é recomendado desenvolver diretamente nas branches `main` e `develop`.
+Em seguida, abra um Pull Request com **base `develop`** e **compare a branch da funcionalidade**, revisando os arquivos antes do merge. Evite desenvolver diretamente em `main` ou `develop`.
 
 ## 9. Documentação técnica
 
-A documentação complementar está organizada na pasta `docs/`.
+Os relatórios detalhados ficam na pasta [`docs/`](docs/):
 
-Documento disponível:
+- [Entrega 01 — Modelagem Inicial do Banco de Dados](docs/01-modelagem-banco.md).
+- [Entrega 02 — Autenticação e Controle de Acesso](docs/02-autenticacao-perfis.md).
 
-**[01 — Modelagem Inicial do Banco de Dados](docs/01-modelagem-banco.md)**
-
-Esse documento apresenta as entidades implementadas, os relacionamentos, as regras de integridade e os testes realizados.
-
-Novos documentos serão adicionados conforme o desenvolvimento dos módulos.
+Os documentos descrevem as decisões técnicas, os componentes implementados, os testes manuais e as limitações de cada etapa.
 
 ## 10. Participação e colaboração
 
-O projeto é desenvolvido pelo Grupo 10 da disciplina de Laboratório de Engenharia de Software.
+O SGR-M é desenvolvido pelo **Grupo 10** da disciplina de Laboratório de Engenharia de Software da Fatec São Paulo.
 
-Os integrantes poderão colaborar nas atividades de:
+Os integrantes podem colaborar no backend, frontend, banco de dados, testes, documentação e revisão de Pull Requests. Para contribuir diretamente, precisam ter acesso apropriado ao repositório; também podem utilizar forks e Pull Requests.
 
-- Desenvolvimento backend;
-- Desenvolvimento frontend;
-- Modelagem e manutenção do banco de dados;
-- Elaboração e execução de testes;
-- Documentação técnica;
-- Integração e revisão de funcionalidades.
+## 11. Segurança e uso dos dados
 
-O repositório é público para consulta e acompanhamento do desenvolvimento.
+O SGR-M utiliza exclusivamente dados fictícios para desenvolvimento, testes e demonstração.
 
-Para enviar alterações diretamente ao repositório, os integrantes deverão ser adicionados como colaboradores. Também é possível contribuir por meio de forks e Pull Requests.
+**Não inclua no repositório:** dados ferroviários operacionais reais, números de série reais, documentos internos de empresas, credenciais, senhas, arquivos `.env` ou dados pessoais não autorizados.
 
-## 11. Segurança e utilização dos dados
-
-Este é um projeto exclusivamente acadêmico.
-
-Todos os dados utilizados para testes, demonstrações e desenvolvimento deverão ser fictícios.
-
-Não devem ser incluídos no repositório:
-
-- Dados operacionais reais ou documentos internos de empresas;
-- Números de série reais de equipamentos;
-- Informações confidenciais de manutenção;
-- Credenciais de acesso;
-- Arquivos `.env` com dados sensíveis;
-- Informações pessoais não autorizadas.
-
-O SGR-M é uma ferramenta proposta para apoio à gestão da manutenção e não substitui avaliações técnicas, procedimentos de segurança ou decisões operacionais.
+A autenticação e o controle de perfis constituem uma camada inicial de segurança. Antes de qualquer implantação real, serão necessárias validações complementares, revisão de permissões, testes e medidas operacionais adequadas.
 
 ---
 
