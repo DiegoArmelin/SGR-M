@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -14,7 +13,14 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
+     * Perfis de acesso permitidos no SGR-M.
+     */
+    public const PERFIL_ADMINISTRADOR = 'administrador';
+    public const PERFIL_GESTOR = 'gestor';
+    public const PERFIL_TECNICO = 'tecnico';
+
+    /**
+     * Atributos que podem ser preenchidos em massa.
      *
      * @var list<string>
      */
@@ -22,10 +28,11 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'perfil',
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
+     * Atributos ocultos na serialização.
      *
      * @var list<string>
      */
@@ -35,7 +42,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * Conversão automática dos atributos.
      *
      * @return array<string, string>
      */
@@ -45,5 +52,37 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Verifica se o usuário é administrador.
+     */
+    public function isAdministrador(): bool
+    {
+        return $this->perfil === self::PERFIL_ADMINISTRADOR;
+    }
+
+    /**
+     * Verifica se o usuário é gestor.
+     */
+    public function isGestor(): bool
+    {
+        return $this->perfil === self::PERFIL_GESTOR;
+    }
+
+    /**
+     * Verifica se o usuário é técnico.
+     */
+    public function isTecnico(): bool
+    {
+        return $this->perfil === self::PERFIL_TECNICO;
+    }
+
+    /**
+     * Verifica se o usuário possui um dos perfis informados.
+     */
+    public function temPerfil(string ...$perfis): bool
+    {
+        return in_array($this->perfil, $perfis, true);
     }
 }

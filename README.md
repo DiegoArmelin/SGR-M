@@ -1,7 +1,7 @@
 # SGR-M — Sistema de Gestão de Rodeiros e Motores
 
 **Projeto Acadêmico — Laboratório de Engenharia de Software**  
-**Fatec São Paulo | Curso de Análise e Desenvolvimento de Sistemas | Grupo 11**
+**Fatec São Paulo | Curso de Análise e Desenvolvimento de Sistemas | Grupo 10**
 
 ## 1. Sobre o projeto
 
@@ -343,7 +343,7 @@ Novos documentos serão adicionados conforme o desenvolvimento dos módulos.
 
 ## 10. Participação e colaboração
 
-O projeto é desenvolvido pelo Grupo 11 da disciplina de Laboratório de Engenharia de Software.
+O projeto é desenvolvido pelo Grupo 10 da disciplina de Laboratório de Engenharia de Software.
 
 Os integrantes poderão colaborar nas atividades de:
 
@@ -377,4 +377,4 @@ O SGR-M é uma ferramenta proposta para apoio à gestão da manutenção e não 
 
 ---
 
-**SGR-M — Grupo 11 | Fatec São Paulo | 2026**
+**SGR-M — Grupo 10 | Fatec São Paulo | 2026**
