@@ -27,25 +27,49 @@ class RankingPriorizacaoService
     {
         $pendencias = $this->consultaPendencias($tipo, $filtros);
 
+        // Denominadores por seção: todos os equipamentos INSTALADOS na
+        // localização filtrada, inclusive os que não têm medições/pendências.
+        // Cada quadro usa seus próprios filtros, sem afetar os demais.
+        $instaladosPendencias = $this->contarInstalados($tipo, $filtros, 'p');
+        $instaladosDiametros = $tipo === 'rodeiro'
+            ? $this->contarInstalados('rodeiro', $filtros, 'd') : 0;
+        $instaladosPeriodicidade = $this->contarInstalados($tipo, $filtros, 'r');
+
+        // O filtro opcional de prioridade limita a tabela, mas os cards
+        // mostram a distribuição COMPLETA da localização selecionada.
+        $semPrioridade = array_diff_key($filtros, ['p_prioridade' => true]);
+        $consultaPendenciasGeral = $this->consultaPendencias($tipo, $semPrioridade);
+
         $resultado = [
             'pendencias' => $pendencias->limit(self::LIMITE)->get(),
             'totalPendencias' => (clone $pendencias)->reorder()->count(),
             'pendenciasPorPrioridade' => [],
+            'pendenciasEquipamentosPorPrioridade' => [],
+            'instaladosPendencias' => $instaladosPendencias,
+            'totalPendenciasGeral' => (clone $consultaPendenciasGeral)->reorder()->count(),
+            // Um equipamento pode ter várias pendências: usar DISTINCT para
+            // calcular a parcela da frota afetada sem percentuais >100%.
+            'equipamentosComPendencia' => $this->contarDistintos($consultaPendenciasGeral),
             'diametros' => collect(),
             'totalDiametros' => 0,
             'diametrosCriticos' => 0,
+            'instaladosDiametros' => $instaladosDiametros,
             'periodicidades' => collect(),
             'totalPeriodicidades' => 0,
             'periodicidades105' => 0,
             'periodicidades110' => 0,
+            'instaladosPeriodicidade' => $instaladosPeriodicidade,
         ];
 
         // Cards da seção de pendências: a prioridade do filtro p_prioridade
         // não limita as contagens, mas os filtros de localização sim.
         foreach (['critica', 'alta', 'media', 'baixa'] as $prioridade) {
-            $base = $this->consultaPendencias($tipo, array_diff_key($filtros, ['p_prioridade' => true]));
-            $resultado['pendenciasPorPrioridade'][$prioridade] = $base
-                ->where('p.prioridade', $prioridade)->reorder()->count();
+            $base = $this->consultaPendencias($tipo, $semPrioridade)
+                ->where('p.prioridade', $prioridade);
+            $resultado['pendenciasPorPrioridade'][$prioridade] =
+                (clone $base)->reorder()->count();
+            $resultado['pendenciasEquipamentosPorPrioridade'][$prioridade] =
+                $this->contarDistintos($base);
         }
 
         if ($tipo === 'rodeiro') {
@@ -77,6 +101,22 @@ class RankingPriorizacaoService
             ->limit(self::LIMITE)->get();
 
         return $resultado;
+    }
+
+    /**
+     * Retorna a quantidade de instalações ativas na localização do bloco.
+     * O mesmo denominador é usado no total e nas faixas da respectiva tabela.
+     */
+    private function contarInstalados(string $tipo, array $filtros, string $prefixo): int
+    {
+        return $this->filtrarLocalizacao($this->instalacoes($tipo), $filtros, $prefixo)
+            ->count();
+    }
+
+    /** Conta equipamentos distintos afetados, não linhas de ocorrências. */
+    private function contarDistintos(Builder $consulta): int
+    {
+        return (clone $consulta)->reorder()->distinct()->count('i.id');
     }
 
     /**
