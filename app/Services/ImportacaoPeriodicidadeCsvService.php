@@ -120,6 +120,8 @@ class ImportacaoPeriodicidadeCsvService
                 }
 
                 $linha['data_atualizacao'] = $instante;
+                // Preserva o número real do CSV, inclusive se houver linhas em branco.
+                $linha['linha_csv'] = $numeroLinha;
                 $dados[] = $linha;
             }
 
@@ -152,11 +154,11 @@ class ImportacaoPeriodicidadeCsvService
                     'detalhes' => [],
                 ];
 
-                foreach ($dados as $indice => $linha) {
+                foreach ($dados as $linha) {
                     // O relatório registra cada linha do CSV com sua posição e
                     // resultado final; é gerado somente quando o lote conclui.
                     $detalhe = [
-                        'linha' => $indice + 2,
+                        'linha' => $linha['linha_csv'],
                         'frota' => $linha['frota'],
                         'trem' => $linha['trem'],
                         'carro' => $linha['carro'],
