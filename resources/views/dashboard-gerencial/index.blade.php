@@ -65,12 +65,32 @@
         <section class="dg-section">
             <h2 class="dg-heading">Parque instalado</h2>
             <div class="dg-grid">
-                <div class="dg-card dg-blue" style="max-width:480px">
+                <div class="dg-card dg-blue" >
                     <small>Total de equipamentos instalados</small>
                     <strong>{{ number_format($rodeiros + $motores, 0, ',', '.') }}</strong>
                     <span class="dg-sub">{{ number_format($rodeiros, 0, ',', '.') }} rodeiros + {{ number_format($motores, 0, ',', '.') }} motores</span>
                 </div>
+                <div class="dg-card dg-green">
+                    <small>Pendências encerradas nos últimos 30 dias</small>
+                    <strong>{{ $dados['encerradas30'] }}</strong>
+                    <span class="dg-sub">Período: {{ now()->subDays(29)->format('d/m/Y') }} a {{ now()->format('d/m/Y') }}</span>
+                    <span class="dg-sub" style="display:block;margin-top:6px">Considera a data de resolução, não a substituição de equipamentos.</span>
+                </div>
+                @php
+                    $movimento = $dados['tendencia'];
+                    $direcao = $movimento['direcao'];
+                    $corTendencia = $direcao === 'aumentando' ? 'dg-red' : ($direcao === 'diminuindo' ? 'dg-green' : 'dg-blue');
+                    $seta = $direcao === 'aumentando' ? '↑' : ($direcao === 'diminuindo' ? '↓' : '→');
+                @endphp
+                <div class="dg-card {{ $corTendencia }}">
+                    <small>Tendência do saldo de pendências (30 dias)</small>
+                    <strong>{{ $seta }} {{ ucfirst($direcao) }}</strong>
+                    <span class="dg-sub">Abertas: {{ $movimento['atual']['abertas'] }} · Encerradas: {{ $movimento['atual']['encerradas'] }}</span>
+                    <span class="dg-sub" style="display:block;margin-top:6px">Saldo atual: {{ $movimento['atual']['saldo'] >= 0 ? '+' : '' }}{{ $movimento['atual']['saldo'] }} · Saldo anterior: {{ $movimento['anterior']['saldo'] >= 0 ? '+' : '' }}{{ $movimento['anterior']['saldo'] }}</span>
+                    <span class="dg-sub" style="display:block;margin-top:6px">Variação líquida: {{ $movimento['variacao_saldo'] > 0 ? '+' : '' }}{{ $movimento['variacao_saldo'] }} em relação aos 30 dias anteriores</span>
+                </div>
             </div>
+            <p class="dg-legend"><strong>Como interpretar:</strong> aumento = mais aberturas líquidas que no período anterior; diminuição = menor crescimento ou maior redução do saldo; estabilidade = saldo líquido sem variação. O número de encerramentos pode ser zero quando ainda não há pendências efetivamente resolvidas no período.</p>
         </section>
 
         <section class="dg-section">
@@ -99,11 +119,6 @@
                         <span class="dg-sub">Alta prioridade</span>
                     </div>
                 @endforeach
-                <div class="dg-card dg-green">
-                    <small>Pendências encerradas nos últimos 30 dias</small>
-                    <strong>{{ $dados['encerradas30'] }}</strong>
-                    <span class="dg-sub">De {{ now()->subDays(29)->format('d/m/Y') }} a {{ now()->format('d/m/Y') }}</span>
-                </div>
             </div>
             <p class="dg-legend"><strong>Legenda:</strong> a porcentagem considera equipamentos distintos com ao menos uma pendência aberta. As demais contagens são ocorrências e podem ser superiores ao número de equipamentos afetados.</p>
         </section>
