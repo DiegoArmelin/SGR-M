@@ -3,7 +3,10 @@
 
 @push('styles')
 <style>
-    .dg-form {display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:12px;align-items:end}
+    .dg-form {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}
+    .dg-tabs{display:flex;gap:6px;margin:18px 0 25px;border-bottom:2px solid #cbd5e1}
+    .dg-tabs a{padding:13px 20px;text-decoration:none;color:#475569;font-weight:bold}
+    .dg-tabs .selected{background:#eff6ff;border-bottom:3px solid #2563eb;color:#17365d}
     .dg-section {margin-top:28px;border-top:1px solid #e2e8f0;padding-top:20px}
     .dg-heading {color:#17365d;margin:0 0 8px}
     .dg-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:16px 0}
@@ -33,29 +36,20 @@
         <h1 class="page-title">Dashboard Gerencial do SGR-M</h1>
         <p>Visão consolidada do parque de equipamentos, pendências, condições e substituições. Os indicadores são calculados a partir do banco, sem modificar registros.</p>
 
-        {{-- O filtro de frota se aplica a todos os indicadores.
-             Datas se aplicam SOMENTE às substituições históricas. --}}
+        <nav class="dg-tabs" aria-label="Abas de indicadores">
+            <a href="{{ route('dashboard.gerencial') }}" class="selected" aria-current="page">Visão geral</a>
+            <a href="{{ route('dashboard.historico') }}">Histórico de substituições</a>
+        </nav>
         <form method="GET" action="{{ route('dashboard.gerencial') }}" class="dg-form">
-            <div>
-                <label class="form-label" for="frota">Frota</label>
+            <div><label class="form-label" for="frota">Frota</label>
                 <select class="form-control" id="frota" name="frota">
                     <option value="">Todas</option>
                     @foreach($frotas as $frota)
                         <option value="{{ $frota->codigo }}" @selected(($filtros['frota'] ?? '') === $frota->codigo)>Frota {{ $frota->codigo }}</option>
                     @endforeach
-                </select>
-            </div>
-            <div>
-                <label class="form-label" for="inicio">Substituições a partir de</label>
-                <input class="form-control" type="date" id="inicio" name="inicio" value="{{ $filtros['inicio'] ?? '' }}">
-            </div>
-            <div>
-                <label class="form-label" for="fim">Substituições até</label>
-                <input class="form-control" type="date" id="fim" name="fim" value="{{ $filtros['fim'] ?? '' }}">
-            </div>
-            <div><button class="btn-primary" type="submit">Atualizar</button>
-                <a href="{{ route('dashboard.gerencial') }}" style="margin-left:6px">Limpar</a>
-            </div>
+                </select></div>
+            <div><button class="btn-primary" type="submit">Filtrar</button>
+                <a href="{{ route('dashboard.gerencial') }}" style="margin-left:6px">Limpar</a></div>
         </form>
         @if($errors->any())
             <div class="alert-error">@foreach($errors->all() as $erro)<p>{{ $erro }}</p>@endforeach</div>
@@ -71,20 +65,11 @@
         <section class="dg-section">
             <h2 class="dg-heading">Parque instalado</h2>
             <div class="dg-grid">
-                @foreach([['Rodeiros instalados',$rodeiros],['Motores instalados',$motores]] as [$rotulo,$numero])
-                    <div class="dg-card dg-blue">
-                        <small>{{ $rotulo }}</small>
-                        <strong>{{ number_format($numero,0,',','.') }}</strong>
-                        <span class="dg-sub">Instalações ativas</span>
-                    </div>
-                @endforeach
-                @foreach(['rodeiro'=>'Rodeiros','motor'=>'Motores'] as $tipo=>$rotulo)
-                    <div class="dg-card dg-amber">
-                        <small>{{ $rotulo }} sem leitura de periodicidade</small>
-                        <strong>{{ $dados['semLeitura'][$tipo] }}</strong>
-                        <span class="dg-sub">Dados ainda não informados</span>
-                    </div>
-                @endforeach
+                <div class="dg-card dg-blue" style="max-width:480px">
+                    <small>Total de equipamentos instalados</small>
+                    <strong>{{ number_format($rodeiros + $motores, 0, ',', '.') }}</strong>
+                    <span class="dg-sub">{{ number_format($rodeiros, 0, ',', '.') }} rodeiros + {{ number_format($motores, 0, ',', '.') }} motores</span>
+                </div>
             </div>
         </section>
 
@@ -100,20 +85,25 @@
                     <div class="dg-card dg-blue">
                         <small>{{ $rotulo }} com pendências</small>
                         <strong>{{ $q['equipamentos'] }} <span style="font-size:15px">{{ number_format($percentual,1,',','.') }}%</span></strong>
-                        <span class="dg-sub">{{ $q['total'] }} ocorrências · {{ $base }} instalados</span>
+                        <span class="dg-sub">{{ $q['total'] }} ocorrências abertas · {{ $base }} instalados</span>
                         <div class="dg-track"><div class="dg-fill" style="--dg-pct:{{ $percentual }}%"></div></div>
                     </div>
                     <div class="dg-card dg-red">
                         <small>{{ $rotulo }} — pendências críticas</small>
                         <strong>{{ $q['critica'] }}</strong>
-                        <span class="dg-sub">Ocorrências críticas abertas</span>
+                        <span class="dg-sub">Prioridade máxima</span>
                     </div>
                     <div class="dg-card dg-orange">
-                        <small>{{ $rotulo }} — altas / médias / baixas</small>
-                        <strong>{{ $q['alta'] }} / {{ $q['media'] }} / {{ $q['baixa'] }}</strong>
-                        <span class="dg-sub">Ocorrências por prioridade</span>
+                        <small>{{ $rotulo }} — pendências altas</small>
+                        <strong>{{ $q['alta'] }}</strong>
+                        <span class="dg-sub">Alta prioridade</span>
                     </div>
                 @endforeach
+                <div class="dg-card dg-green">
+                    <small>Pendências encerradas nos últimos 30 dias</small>
+                    <strong>{{ $dados['encerradas30'] }}</strong>
+                    <span class="dg-sub">De {{ now()->subDays(29)->format('d/m/Y') }} a {{ now()->format('d/m/Y') }}</span>
+                </div>
             </div>
             <p class="dg-legend"><strong>Legenda:</strong> a porcentagem considera equipamentos distintos com ao menos uma pendência aberta. As demais contagens são ocorrências e podem ser superiores ao número de equipamentos afetados.</p>
         </section>
@@ -147,24 +137,9 @@
         </section>
 
         <section class="dg-section">
-            <h2 class="dg-heading">Substituições registradas</h2>
-            <p class="dg-legend">Os valores desta seção utilizam a data de retirada registrada no histórico. Os filtros de data acima não afetam os indicadores de situação atual.</p>
-            <div class="dg-grid">
-                <div class="dg-card dg-blue"><small>Rodeiros substituídos</small><strong>{{ $dados['substituicoes']['rodeiro'] }}</strong><span class="dg-sub">Retiradas no período</span></div>
-                <div class="dg-card dg-green"><small>Motores substituídos</small><strong>{{ $dados['substituicoes']['motor'] }}</strong><span class="dg-sub">Retiradas no período</span></div>
-                <div class="dg-card dg-blue"><small>Substituições totais</small><strong>{{ array_sum($dados['substituicoes']) }}</strong><span class="dg-sub">Rodeiros + motores</span></div>
-            </div>
-        </section>
-
-        <section class="dg-section">
-            <h2 class="dg-heading">Trens cadastrados por frota</h2>
-            <table class="dg-table"><thead><tr><th>Frota</th><th>Total de trens cadastrados</th></tr></thead><tbody>
-                @forelse($dados['totaisFrota'] as $linha)
-                    <tr><td>{{ $linha->codigo }}</td><td>{{ $linha->total_trens }}</td></tr>
-                @empty
-                    <tr><td colspan="2">Nenhuma frota encontrada.</td></tr>
-                @endforelse
-            </tbody></table>
+            <h2 class="dg-heading">Histórico de substituições</h2>
+            <p>Gráficos mensais, motivos, comparação por frota e exportação em PDF estão disponíveis na aba de histórico.</p>
+            <p><a href="{{ route('dashboard.historico', ['frota' => $filtros['frota'] ?? null]) }}">Abrir histórico e gráficos</a></p>
         </section>
 
         <p style="margin-top:20px"><a href="{{ route('ranking.index') }}">Consultar ranking detalhado</a> · <a href="{{ route('pendencias.index') }}">Consultar pendências</a></p>
