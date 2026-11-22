@@ -78,13 +78,19 @@ class RankingPriorizacaoController extends Controller
             'pendencias' => $resultado['pendencias'],
             'totalPendencias' => $resultado['totalPendencias'],
             'pendenciasPorPrioridade' => $resultado['pendenciasPorPrioridade'],
+            'pendenciasEquipamentosPorPrioridade' => $resultado['pendenciasEquipamentosPorPrioridade'],
+            'instaladosPendencias' => $resultado['instaladosPendencias'],
+            'totalPendenciasGeral' => $resultado['totalPendenciasGeral'],
+            'equipamentosComPendencia' => $resultado['equipamentosComPendencia'],
             'diametros' => $resultado['diametros'],
             'totalDiametros' => $resultado['totalDiametros'],
             'diametrosCriticos' => $resultado['diametrosCriticos'],
+            'instaladosDiametros' => $resultado['instaladosDiametros'],
             'periodicidades' => $resultado['periodicidades'],
             'totalPeriodicidades' => $resultado['totalPeriodicidades'],
             'periodicidades105' => $resultado['periodicidades105'],
             'periodicidades110' => $resultado['periodicidades110'],
+            'instaladosPeriodicidade' => $resultado['instaladosPeriodicidade'],
         ]);
     }
 }
