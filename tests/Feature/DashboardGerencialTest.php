@@ -186,4 +186,57 @@ class DashboardGerencialTest extends TestCase
             ->assertViewHas('dados', fn ($d) => $d['encerradas30'] === 1);
     }
 
+
+    /** Tendência compara saldos aberturas-encerramentos em duas janelas de 30 dias. */
+    public function test_tendencia_compara_aberturas_e_fechamentos_e_respeita_frota(): void
+    {
+        $i = $this->instalar('I', 'I01');
+        $j = $this->instalar('J', 'J26');
+        $autor = $this->gestor();
+
+        // Abriu uma na janela atual, encerrou outra na mesma janela.
+        PendenciaEquipamento::create([
+            'eixo_id'=>$i['eixo']->id,'rodeiro_id'=>$i['rodeiro']->id,
+            'descricao'=>'Aberta recente','prioridade'=>'media',
+            'situacao'=>'aberta','registrado_por'=>$autor->id,
+        ]);
+        $encerrada = PendenciaEquipamento::create([
+            'eixo_id'=>$i['eixo']->id,'rodeiro_id'=>$i['rodeiro']->id,
+            'descricao'=>'Encerrada recente','prioridade'=>'alta',
+            'situacao'=>'resolvida','registrado_por'=>$autor->id,
+            'resolvida_em'=>now()->subDays(3),
+        ]);
+        $encerrada->timestamps = false;
+        $encerrada->update([
+            'created_at'=>now()->subDays(45),
+            'updated_at'=>now()->subDays(3),
+        ]);
+        $antiga = PendenciaEquipamento::create([
+            'eixo_id'=>$i['eixo']->id,'rodeiro_id'=>$i['rodeiro']->id,
+            'descricao'=>'Aberta antiga','prioridade'=>'baixa',
+            'situacao'=>'aberta','registrado_por'=>$autor->id,
+        ]);
+        $antiga->timestamps = false;
+        $antiga->update([
+            'created_at'=>now()->subDays(40),
+            'updated_at'=>now()->subDays(40),
+        ]);
+
+        // Outra frota não deve contaminar os números da frota I.
+        PendenciaEquipamento::create([
+            'eixo_id'=>$j['eixo']->id,'rodeiro_id'=>$j['rodeiro']->id,
+            'descricao'=>'Outra frota','prioridade'=>'critica',
+            'situacao'=>'aberta','registrado_por'=>$autor->id,
+        ]);
+
+        $this->actingAs($autor)->get(route('dashboard.gerencial',['frota'=>'I']))
+            ->assertOk()->assertViewHas('dados', fn ($dados) =>
+                $dados['encerradas30']===1
+                && $dados['tendencia']['atual']['abertas']===1
+                && $dados['tendencia']['atual']['encerradas']===1
+                && $dados['tendencia']['anterior']['abertas']===2
+                && $dados['tendencia']['direcao']==='diminuindo'
+            )->assertSee('Tendência do saldo de pendências');
+    }
+
 }
