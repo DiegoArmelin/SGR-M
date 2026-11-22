@@ -8,16 +8,25 @@ use App\Models\Frota;
 use App\Models\InstalacaoMotor;
 use App\Models\InstalacaoRodeiro;
 use App\Models\Motor;
+use App\Models\MotivoRetirada;
 use App\Models\PendenciaEquipamento;
 use App\Models\Rodeiro;
 use App\Models\Trem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Database\Seeders\MotivosRetiradaSeeder;
 use Tests\TestCase;
 
 class PendenciaEquipamentoTest extends TestCase
 {
     use RefreshDatabase;
+
+    /** Cada teste utiliza o catálogo real de motivos em banco temporário. */
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(MotivosRetiradaSeeder::class);
+    }
 
     /**
      * Cria a hierarquia usada pelos testes, incluindo instalações ativas.
@@ -53,7 +62,9 @@ class PendenciaEquipamentoTest extends TestCase
             'carro_id' => $local['carro']->id,
             'eixo_id' => $local['eixo']->id,
             'tipo' => $tipo,
-            'descricao' => 'Vibração anormal detectada',
+            // A seleção do motivo substitui a digitação da descrição genérica.
+            'motivo_retirada_id' => MotivoRetirada::where('codigo', $tipo === 'rodeiro' ? 'ROD001' : 'MOT001')->value('id'),
+            'observacoes' => 'Análise inicial registrada no SGR-M.',
             'prioridade' => 'critica',
         ];
     }
@@ -85,7 +96,11 @@ class PendenciaEquipamentoTest extends TestCase
             'carro_id' => $local['carro']->id,
             'eixo_id' => $local['eixo']->id,
             'tipo' => 'rodeiro',
-        ]))->assertOk()->assertSee('RD-001')->assertDontSee('MT-001');
+        ]))->assertOk()
+            ->assertSee('RD-001')
+            ->assertSee('Defeito no rolamento do mancal')
+            ->assertDontSee('Motor desbalanceado')
+            ->assertDontSee('MT-001');
     }
 
     /** Persistência da posição e identificação do equipamento instalado. */
@@ -104,6 +119,8 @@ class PendenciaEquipamentoTest extends TestCase
             'registrado_por' => $usuario->id,
             'prioridade' => 'critica',
             'situacao' => 'aberta',
+            'motivo_retirada_id' => MotivoRetirada::where('codigo', 'ROD001')->value('id'),
+            'observacoes' => 'Análise inicial registrada no SGR-M.',
         ]);
     }
 
@@ -153,6 +170,42 @@ class PendenciaEquipamentoTest extends TestCase
         )->assertSessionHasErrors('eixo_id');
 
         $this->assertSame(0, PendenciaEquipamento::count());
+    }
+
+    /** Um motivo de motor não deve ser aceito para pendência de rodeiro. */
+    public function test_rejeita_motivo_de_outro_tipo(): void
+    {
+        $local = $this->prepararPosicao();
+        $usuario = User::factory()->create(['perfil' => 'tecnico']);
+        $dados = $this->dados($local);
+        $dados['motivo_retirada_id'] = MotivoRetirada::where('codigo', 'MOT001')->value('id');
+
+        $this->actingAs($usuario)->post(route('pendencias.store'), $dados)
+            ->assertSessionHasErrors('motivo_retirada_id');
+
+        $this->assertSame(0, PendenciaEquipamento::count());
+    }
+
+    /** O cadastro deve exigir motivo mas permitir observações em branco. */
+    public function test_motivo_obrigatorio_e_observacoes_opcionais(): void
+    {
+        $local = $this->prepararPosicao();
+        $usuario = User::factory()->create(['perfil' => 'tecnico']);
+        $dados = $this->dados($local);
+        unset($dados['motivo_retirada_id'], $dados['observacoes']);
+
+        $this->actingAs($usuario)->post(route('pendencias.store'), $dados)
+            ->assertSessionHasErrors('motivo_retirada_id');
+
+        $dados['motivo_retirada_id'] = MotivoRetirada::where('codigo', 'ROD001')->value('id');
+        $this->actingAs($usuario)->post(route('pendencias.store'), $dados)
+            ->assertRedirect(route('pendencias.index'));
+
+        $this->assertDatabaseHas('pendencias_equipamentos', [
+            'eixo_id' => $local['eixo']->id,
+            'descricao' => 'Defeito no rolamento do mancal',
+            'observacoes' => null,
+        ]);
     }
 
     public function test_resolve_pendencia_com_justificativa(): void
