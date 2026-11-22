@@ -208,44 +208,115 @@ class PendenciaEquipamentoTest extends TestCase
         ]);
     }
 
-    public function test_resolve_pendencia_com_justificativa(): void
+    /** A listagem oferece substituição apenas ao perfil autorizado. */
+    public function test_lista_mostra_substituir_e_nao_permte_resolver_manualmente(): void
     {
         $local = $this->prepararPosicao();
-        $usuario = User::factory()->create(['perfil' => 'administrador']);
-        $pendencia = PendenciaEquipamento::create([
+        $usuario = User::factory()->create(['perfil' => 'tecnico']);
+        PendenciaEquipamento::create([
             'eixo_id' => $local['eixo']->id,
             'rodeiro_id' => $local['rodeiro']->id,
-            'descricao' => 'Pendência de teste',
-            'prioridade' => 'media',
-            'situacao' => 'aberta',
+            'descricao' => 'Defeito cadastrado',
+            'prioridade' => 'critica',
             'registrado_por' => $usuario->id,
         ]);
 
-        $this->actingAs($usuario)->patch(route('pendencias.resolver', $pendencia), [
-            'observacoes_resolucao' => 'Inspeção concluída.',
-        ])->assertRedirect(route('pendencias.index'));
+        $this->actingAs($usuario)->get(route('pendencias.index'))
+            ->assertOk()
+            ->assertSee('Substituir')
+            ->assertSee('I011-1')
+            ->assertSee('Crítica')
+            ->assertDontSee('Justificativa');
 
-        $this->assertSame('resolvida', $pendencia->fresh()->situacao);
-        $this->assertNotNull($pendencia->fresh()->resolvida_em);
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('pendencias.resolver'));
     }
 
-    public function test_impede_resolver_novamente(): void
+    /** Ao substituir o equipamento, a pendência da posição é resolvida. */
+    public function test_substituicao_encerra_pendencia_automaticamente(): void
+    {
+        $local = $this->prepararPosicao();
+        $usuario = User::factory()->create(['perfil' => 'tecnico']);
+        $novo = Rodeiro::create(['numero_serie' => 'RD-NOVO', 'status' => 'estoque']);
+        $pendencia = PendenciaEquipamento::create([
+            'eixo_id' => $local['eixo']->id,
+            'rodeiro_id' => $local['rodeiro']->id,
+            'descricao' => 'Falha no mancal',
+            'prioridade' => 'critica',
+            'registrado_por' => $usuario->id,
+        ]);
+
+        $this->actingAs($usuario)->post(route('equipamentos.movimentacao.store', [
+            'eixo' => $local['eixo'], 'tipo' => 'rodeiro',
+        ]), [
+            'numero_serie_saida' => $local['rodeiro']->numero_serie,
+            'numero_serie_estoque' => $novo->numero_serie,
+            'data_movimentacao' => '2026-11-01',
+            'motivo_retirada_id' => MotivoRetirada::where('codigo', 'ROD001')->value('id'),
+            'origem' => 'pendencias',
+        ])->assertRedirect(route('pendencias.index'));
+
+        $this->assertDatabaseHas('pendencias_equipamentos', [
+            'id' => $pendencia->id, 'situacao' => 'resolvida',
+            'rodeiro_id' => $local['rodeiro']->id,
+        ]);
+        $this->assertNotNull($pendencia->fresh()->resolvida_em);
+        $this->assertDatabaseHas('rodeiros', ['id' => $novo->id, 'status' => 'instalado']);
+        $this->assertSame(1, InstalacaoRodeiro::where('eixo_id', $local['eixo']->id)
+            ->whereNull('data_retirada')->count());
+    }
+
+    /** A troca de rodeiro não encerra pendência do motor do mesmo eixo. */
+    public function test_substituicao_nao_encerra_pendencia_de_outro_tipo(): void
+    {
+        $local = $this->prepararPosicao();
+        $usuario = User::factory()->create(['perfil' => 'tecnico']);
+        $novo = Rodeiro::create(['numero_serie' => 'RD-NOVO', 'status' => 'estoque']);
+        $motorPendente = PendenciaEquipamento::create([
+            'eixo_id' => $local['eixo']->id,
+            'motor_id' => $local['motor']->id,
+            'descricao' => 'Problema no motor',
+            'prioridade' => 'media',
+            'registrado_por' => $usuario->id,
+        ]);
+
+        $this->actingAs($usuario)->post(route('equipamentos.movimentacao.store', [
+            'eixo' => $local['eixo'], 'tipo' => 'rodeiro',
+        ]), [
+            'numero_serie_saida' => $local['rodeiro']->numero_serie,
+            'numero_serie_estoque' => $novo->numero_serie,
+            'data_movimentacao' => '2026-11-01',
+            'motivo_retirada_id' => MotivoRetirada::where('codigo', 'ROD001')->value('id'),
+        ])->assertRedirect();
+
+        $this->assertSame('aberta', $motorPendente->fresh()->situacao);
+    }
+
+    /** Se a substituição for rejeitada, a pendência não pode encerrar. */
+    public function test_troca_invalida_mantem_pendencia_aberta(): void
     {
         $local = $this->prepararPosicao();
         $usuario = User::factory()->create(['perfil' => 'tecnico']);
         $pendencia = PendenciaEquipamento::create([
             'eixo_id' => $local['eixo']->id,
-            'motor_id' => $local['motor']->id,
-            'descricao' => 'Pendência encerrada',
-            'prioridade' => 'baixa',
-            'situacao' => 'resolvida',
+            'rodeiro_id' => $local['rodeiro']->id,
+            'descricao' => 'Falha detectada',
+            'prioridade' => 'alta',
             'registrado_por' => $usuario->id,
-            'resolvida_em' => now(),
         ]);
 
-        $this->actingAs($usuario)->patch(route('pendencias.resolver', $pendencia), [
-            'observacoes_resolucao' => 'Tentativa repetida',
-        ])->assertSessionHasErrors('situacao');
+        $this->actingAs($usuario)->post(route('equipamentos.movimentacao.store', [
+            'eixo' => $local['eixo'], 'tipo' => 'rodeiro',
+        ]), [
+            'numero_serie_saida' => $local['rodeiro']->numero_serie,
+            'numero_serie_entrada' => 'RD-NAO-CADASTRADO',
+            'data_movimentacao' => '2026-11-01',
+            'motivo_retirada_id' => MotivoRetirada::where('codigo', 'ROD001')->value('id'),
+        ])->assertSessionHasErrors('numero_serie_entrada');
+
+        $this->assertSame('aberta', $pendencia->fresh()->situacao);
+        $this->assertDatabaseHas('rodeiros', [
+            'id' => $local['rodeiro']->id, 'status' => 'instalado',
+        ]);
     }
 
     public function test_lista_ordenada_por_prioridade(): void
