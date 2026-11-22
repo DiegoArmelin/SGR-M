@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\ConsultaEquipamentosController;
 
 /*
 |--------------------------------------------------------------------------
@@ -52,6 +53,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', function () {
         return view('dashboard');
     })->name('dashboard');
+
+    // Consulta permitida aos três perfis autenticados.
+    Route::get('/equipamentos', [ConsultaEquipamentosController::class, 'index'])
+        ->middleware('perfil:administrador,gestor,tecnico')
+        ->name('equipamentos.index');
 
     // Encerrar sessão.
     Route::post('/logout', [
