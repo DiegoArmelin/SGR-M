@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Trem;
+use App\Models\Frota;
 use App\Services\RankingPriorizacaoService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -20,11 +21,14 @@ class RankingPriorizacaoController extends Controller
     {
         $filtros = $request->validate([
             'tipo' => ['nullable', Rule::in(['rodeiro', 'motor'])],
+            'p_frota' => ['nullable', 'string', 'exists:frotas,codigo'],
             'p_trem' => ['nullable', 'string', 'exists:trens,codigo'],
             'p_carro' => ['nullable', 'string', 'exists:carros,codigo'],
             'p_prioridade' => ['nullable', Rule::in(['critica', 'alta', 'media', 'baixa'])],
+            'd_frota' => ['nullable', 'string', 'exists:frotas,codigo'],
             'd_trem' => ['nullable', 'string', 'exists:trens,codigo'],
             'd_carro' => ['nullable', 'string', 'exists:carros,codigo'],
+            'r_frota' => ['nullable', 'string', 'exists:frotas,codigo'],
             'r_trem' => ['nullable', 'string', 'exists:trens,codigo'],
             'r_carro' => ['nullable', 'string', 'exists:carros,codigo'],
         ]);
@@ -37,6 +41,21 @@ class RankingPriorizacaoController extends Controller
             $codigoTrem = $filtros[$prefixo . '_trem'] ?? null;
             $codigoCarro = $filtros[$prefixo . '_carro'] ?? null;
 
+            $codigoFrota = $filtros[$prefixo . '_frota'] ?? null;
+            if ($codigoTrem && $codigoFrota) {
+                abort_unless(
+                    Trem::where('codigo', $codigoTrem)
+                        ->whereHas('frota', fn ($q) => $q->where('codigo', $codigoFrota))
+                        ->exists(), 404, 'O trem não pertence à frota selecionada.'
+                );
+            }
+            if ($codigoCarro && $codigoFrota && !$codigoTrem) {
+                abort_unless(
+                    Trem::whereHas('frota', fn ($q) => $q->where('codigo', $codigoFrota))
+                        ->whereHas('carros', fn ($q) => $q->where('codigo', $codigoCarro))
+                        ->exists(), 404, 'O carro não pertence à frota.'
+                );
+            }
             if ($codigoCarro && $codigoTrem) {
                 abort_unless(
                     Trem::where('codigo', $codigoTrem)
@@ -53,15 +72,19 @@ class RankingPriorizacaoController extends Controller
         return view('ranking.index', [
             'tipo' => $tipo,
             'filtros' => $filtros,
+            'frotas' => Frota::orderBy('codigo')->get(),
             'trens' => Trem::with(['carros' => fn ($q) => $q->orderBy('posicao')])
                 ->orderBy('codigo')->get(),
             'pendencias' => $resultado['pendencias'],
             'totalPendencias' => $resultado['totalPendencias'],
+            'pendenciasPorPrioridade' => $resultado['pendenciasPorPrioridade'],
             'diametros' => $resultado['diametros'],
             'totalDiametros' => $resultado['totalDiametros'],
             'diametrosCriticos' => $resultado['diametrosCriticos'],
             'periodicidades' => $resultado['periodicidades'],
             'totalPeriodicidades' => $resultado['totalPeriodicidades'],
+            'periodicidades105' => $resultado['periodicidades105'],
+            'periodicidades110' => $resultado['periodicidades110'],
         ]);
     }
 }
