@@ -18,7 +18,7 @@ use Illuminate\Validation\ValidationException;
  *
  * A data é comparada separadamente em cada equipamento. Uma medição antiga
  * de rodeiro não impede atualizar o motor (e vice-versa).
- * Erros de estrutura/serie inexistente revertam o lote inteiro.
+ * Erros de estrutura ou série inexistente revertem o lote inteiro.
  */
 class ImportacaoPeriodicidadeCsvService
 {
@@ -279,7 +279,7 @@ class ImportacaoPeriodicidadeCsvService
     {
         $normalizado = str_replace(',', '.', trim($valor));
         if (!preg_match('/^\d+(?:\.\d{1,2})?$/D', $normalizado)
-            || (float) $normalizado > 99999.99) {
+            || (float) $normalizado > (str_starts_with($campo, 'periodicidade') ? 999.99 : 9999.99)) {
             $this->falhar("Linha {$linha}: {$campo} inválido.");
         }
         return number_format((float) $normalizado, 2, '.', '');
