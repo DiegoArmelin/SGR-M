@@ -57,10 +57,9 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
 
-    // Página inicial autenticada: utiliza o mesmo painel de indicadores
-    // gerenciais, inclusive o filtro por frota, sem duplicar lógica.
-    // Preserva o nome 'dashboard' usado pelo login e pelo menu superior.
-    Route::get('/dashboard', [DashboardGerencialController::class, 'index'])
+    // Central de funcionalidades: a página inicial oferece atalhos por perfil.
+    // O dashboard de indicadores permanece independente em /indicadores.
+    Route::view('/dashboard', 'dashboard')
         ->middleware('perfil:administrador,gestor,tecnico')
         ->name('dashboard');
 
