@@ -62,14 +62,14 @@ class HistoricoSubstituicoesSeeder extends Seeder
             }
         }
 
-        // Dez/2024 a Nov/2026 quando executado em nov/2026. Datas são
-        // relativas ao mês de execução, garantindo últimos seis meses úteis.
-        $inicio = now()->startOfMonth()->subMonths(23);
+        // Janela FIXA: dezembro/2024 a novembro/2026, total de 24 meses.
+        // Não deslocar a janela em reexecuções: preservar idempotência.
+        $inicio = Carbon::create(2024, 12, 1)->startOfMonth();
 
         DB::transaction(function () use ($eixos, $motivos, $inicio): void {
             for ($m = 0; $m < 24; $m++) {
                 $mes = $inicio->copy()->addMonths($m);
-                $limiteDia = $m === 23 ? min(20, now()->day) : 20;
+                $limiteDia = 20; // Datas seguras até 20/11/2026, mês corrente na entrega.
 
                 foreach (['rodeiro' => 25, 'motor' => 20] as $tipo => $quantidade) {
                     for ($n = 0; $n < $quantidade; $n++) {
