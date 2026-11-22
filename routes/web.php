@@ -102,6 +102,9 @@ Route::middleware('auth')->group(function () {
             ->name('importacoes.periodicidade.create');
         Route::post('/importacoes/periodicidade', [ImportacaoPeriodicidadeController::class, 'store'])
             ->name('importacoes.periodicidade.store');
+        // Exportação do último resultado acessível na sessão do administrador.
+        Route::get('/importacoes/periodicidade/relatorio.csv', [ImportacaoPeriodicidadeController::class, 'exportar'])
+            ->name('importacoes.periodicidade.exportar');
     });
 
     // Cadastros: somente administrador, com rotas estáticas antes das parametrizadas.
