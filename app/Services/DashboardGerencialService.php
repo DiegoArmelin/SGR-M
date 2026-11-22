@@ -60,31 +60,47 @@ class DashboardGerencialService
             $substituicoes[$tipo] = $q->count();
         }
 
-        // Data de encerramento da pendência: últimos 30 dias corridos, hoje inclusive.
-        // Conta ocorrências encerradas, inclusive as peças já retiradas.
-        $inicio30 = now()->startOfDay()->subDays(29);
-        $consultaEncerradas = DB::table('pendencias_equipamentos as p')
-            ->where('p.situacao', 'resolvida')
-            ->whereNotNull('p.resolvida_em')
-            ->where('p.resolvida_em', '>=', $inicio30)
-            ->where('p.resolvida_em', '<=', now());
+        // Compara janelas corridas de 30 dias completos (inclusive hoje).
+        // Aberturas seguem created_at; fechamentos seguem resolvida_em.
+        // Não é possível inferir encerramento apenas por data_retirada.
+        $hoje = now();
+        $atualInicio = $hoje->copy()->startOfDay()->subDays(29);
+        $anteriorInicio = $hoje->copy()->startOfDay()->subDays(59);
+        $anteriorFim = $atualInicio->copy()->subSecond();
 
-        // Sem filtro, inclui também cadastros antigos sem eixo_id; com frota
-        // selecionada, considera apenas registros com localização rastreável.
-        if ($frota) {
-            $consultaEncerradas
-                ->join('eixos as e', 'e.id', '=', 'p.eixo_id')
-                ->join('carros as c', 'c.id', '=', 'e.carro_id')
-                ->join('trens as t', 't.id', '=', 'c.trem_id')
-                ->join('frotas as f', 'f.id', '=', 't.frota_id')
-                ->where('f.codigo', $frota);
+        $tendencia = [];
+        foreach ([
+            'atual' => [$atualInicio, $hoje],
+            'anterior' => [$anteriorInicio, $anteriorFim],
+        ] as $janela => [$inicioPeriodo, $fimPeriodo]) {
+            $base = DB::table('pendencias_equipamentos as p');
+            if ($frota) {
+                $base->join('eixos as e', 'e.id', '=', 'p.eixo_id')
+                    ->join('carros as c', 'c.id', '=', 'e.carro_id')
+                    ->join('trens as t', 't.id', '=', 'c.trem_id')
+                    ->join('frotas as f', 'f.id', '=', 't.frota_id')
+                    ->where('f.codigo', $frota);
+            }
+            $tendencia[$janela] = [
+                'abertas' => (clone $base)->whereBetween('p.created_at', [$inicioPeriodo, $fimPeriodo])->count(),
+                'encerradas' => (clone $base)->where('p.situacao', 'resolvida')
+                    ->whereBetween('p.resolvida_em', [$inicioPeriodo, $fimPeriodo])->count(),
+            ];
+            $tendencia[$janela]['saldo'] = $tendencia[$janela]['abertas'] - $tendencia[$janela]['encerradas'];
         }
 
-        $encerradas30 = $consultaEncerradas->count();
+        $encerradas30 = $tendencia['atual']['encerradas'];
+        $variacaoSaldo = $tendencia['atual']['saldo'] - $tendencia['anterior']['saldo'];
+
+        // Sinal positivo significa crescimento líquido do estoque de
+        // pendências; negativo representa redução; zero, estabilidade.
+        $tendencia['variacao_saldo'] = $variacaoSaldo;
+        $tendencia['direcao'] = $variacaoSaldo > 0 ? 'aumentando'
+            : ($variacaoSaldo < 0 ? 'diminuindo' : 'estavel');
 
         return compact(
             'instalados', 'periodicidade', 'diametros',
-            'pendencias', 'substituicoes', 'encerradas30'
+            'pendencias', 'substituicoes', 'encerradas30', 'tendencia'
         );
     }
 
