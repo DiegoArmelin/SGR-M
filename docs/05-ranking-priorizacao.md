@@ -3,7 +3,7 @@
 **Projeto:** SGR-M — Fatec São Paulo  
 **Disciplina:** Laboratório de Engenharia de Software  
 **Branch:** `feature/modulo-5-ranking-priorizacao`  
-**Situação:** versão anterior aprovada no Laragon; expansão dos filtros, cards e periodicidade dos motores enviada ao GitHub e aguardando novos testes locais.
+**Situação:** versão anterior validada no Laragon; novos cards proporcionais enviados ao GitHub e aguardando testes locais.
 
 ## 1. Objetivo
 
@@ -111,3 +111,36 @@ A suíte Feature cobre autorização, separação de abas, precedência de pend�
 ## 9. Evolução: motor com periodicidade, três níveis de filtragem e novos cards
 
 O ranking passa a apresentar periodicidade tanto para rodeiros quanto para motores. A estrutura de dados dos motores é ampliada por uma migration do Módulo 04 (consulte a documentação de importação); não existem campos de diâmetro nos motores. As três seções utilizam filtros de frota, trem e carro independentes. Pendências exibem cinco cards: total e quatro níveis de criticidade. Periodicidade exibe três cards: valores >=100%, >=105% e >=110%. Cada card é calculado sobre o conjunto filtrado completo, enquanto a tabela mantém somente o Top 10.
+
+## 10. Evolução — Indicadores proporcionais ao parque instalado
+
+Os cards de pendências, diâmetro e periodicidade agora apresentam **quantidade, porcentagem, total de equipamentos instalados e barra gráfica de participação**. Os denominadores são calculados de maneira independente para cada seção (filtros `p_`, `d_` e `r_`) e aba (rodeiro ou motor), sempre considerando **somente equipamentos com instalação ativa**.
+
+### Definições dos indicadores
+
+| Seção | Numerador | Denominador | Significado |
+|---|---|---|---|
+| Pendências — total | Equipamentos distintos com pelo menos uma pendência aberta | Equipamentos instalados na localização filtrada | Porcentagem de equipamentos afetados |
+| Pendências — crítica/alta/média/baixa | Equipamentos distintos com ocorrência aberta da respectiva prioridade | Equipamentos instalados na localização filtrada | Porcentagem afetada por prioridade |
+| Diâmetro abaixo de 745 mm | Rodeiros instalados cujo menor diâmetro é inferior a 745 mm | Rodeiros instalados na localização filtrada | Incidência de diâmetro de atenção |
+| Diâmetro crítico ≤742 mm | Rodeiros instalados cujo menor diâmetro é menor ou igual a 742 mm | Rodeiros instalados na localização filtrada | Incidência de diâmetro crítico |
+| Periodicidade ≥100/105/110% | Rodeiros ou motores instalados que atendem ao respectivo limite | Equipamentos do tipo instalados na localização filtrada | Incidência de periodicidade acima da faixa |
+
+A fórmula para todos os cards é **percentual = numerador ÷ total instalado × 100**. Quando não existem equipamentos instalados no filtro, o percentual exibido é 0%, evitando divisão por zero.
+
+**Distinção entre ocorrências e equipamentos:** várias pendências em um mesmo equipamento contam como várias ocorrências, mas **uma única unidade afetada** no percentual geral. Um equipamento com pendências de prioridades diferentes aparece nas respectivas faixas; por isso, a soma das porcentagens por prioridade pode superar a porcentagem geral de equipamentos afetados. As contagens de ocorrências continuam indicadas como dado complementar nos cards.
+
+**Faixas cumulativas:** rodeiros ≤742 mm pertencem também à contagem abaixo de 745 mm. Da mesma forma, equipamentos com periodicidade ≥110% pertencem às três faixas de periodicidade.
+
+**Apresentação visual:** cores para diferenciação de criticidade e faixas, barra proporcional, quantitativo instalado e legenda explicativa por seção. A tabela mantém o limite de 10 linhas; os cards usam o conjunto completo de dados da localização filtrada.
+
+### Arquivos alterados nesta evolução
+
+- `app/Services/RankingPriorizacaoService.php`: adição de `contarInstalados()` e `contarDistintos()`, com denominadores independentes e contagens de equipamentos distintos por prioridade.
+- `app/Http/Controllers/RankingPriorizacaoController.php`: envio das contagens adicionais à view.
+- `resources/views/ranking/index.blade.php`: cores, percentuais, barras e legendas.
+- `tests/Feature/RankingPriorizacaoTest.php`: testes de ocorrência duplicada no mesmo equipamento, filtros independentes, motores e ausência de instalados.
+
+**Validação no Laragon:** executar `php artisan test --filter=RankingPriorizacaoTest` e `php artisan test`; conferir visualmente os cards nas abas de rodeiros e motores e aplicar filtros separadamente em cada bloco.
+
+Não há alteração de tabelas, migrations ou seeders nesta evolução.
