@@ -247,3 +247,17 @@ O endereço raiz `/` continua direcionando visitantes ao login e usuários auten
 Teste adicionado em `DashboardGerencialTest`: acesso anônimo, redirecionamento autenticado, indicadores visíveis e funcionamento do filtro por frota. A view inicial anterior (`resources/views/dashboard.blade.php`) deixa de ser usada nessa navegação, mas não precisa ser excluída nesta alteração.
 
 **Validação:** executar `php artisan test --filter=DashboardGerencialTest` e `php artisan test`; confirmar o redirecionamento após login e o conteúdo exibido por Início e pela marca do sistema.
+
+## 12. Página inicial como central de funcionalidades
+
+Após avaliação de usabilidade, a rota inicial autenticada `/dashboard` voltou a apresentar uma **central de acesso rápido**, em vez de exibir diretamente os indicadores gerenciais. O painel de indicadores continua em `/indicadores`, acessível pelo menu superior e pelo card correspondente.
+
+A página `resources/views/dashboard.blade.php` foi remodelada com cards clicáveis e responsivos: consulta hierárquica, gestão de pendências, ranking, indicadores gerenciais, histórico de substituições, consulta por série e registro de nova pendência. Para administradores, existe uma seção adicional com atalhos para cadastros de frotas e trens e importação CSV. Gestores e técnicos não recebem esses atalhos administrativos.
+
+O redirecionamento de `/` para `/dashboard` após autenticação continua preservado, assim como o nome da rota usado pelo login e pelo logotipo. Os cards apontam exclusivamente para rotas implementadas e não alteram as proteções de middleware.
+
+**Critérios de usabilidade:** acesso direto às funções frequentes, descrições breves, estados de foco, cartões inteiros clicáveis e distribuição adaptável a dispositivos móveis.
+
+**Testes:** `DashboardGerencialTest` verifica a central como página inicial e a disponibilidade independente dos indicadores; `MenuSuperiorTest` verifica atalhos administrativos conforme o perfil.
+
+**Validação local pendente** para esta alteração de apresentação; executar `php artisan test --filter=DashboardGerencialTest`, `php artisan test --filter=MenuSuperiorTest` e `php artisan test`.
