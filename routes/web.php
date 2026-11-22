@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ConsultaEquipamentosController;
+use App\Http\Controllers\ConsultaHierarquicaController;
 use App\Http\Controllers\FrotaController;
 use App\Http\Controllers\TremController;
 
@@ -60,6 +61,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/equipamentos', [ConsultaEquipamentosController::class, 'index'])
         ->middleware('perfil:administrador,gestor,tecnico')
         ->name('equipamentos.index');
+
+    // Consulta hierárquica somente leitura, acessível aos três perfis.
+    Route::get('/equipamentos/hierarquica', [ConsultaHierarquicaController::class, 'index'])
+        ->middleware('perfil:administrador,gestor,tecnico')
+        ->name('equipamentos.hierarquica');
 
     // Consulta de frotas e trens: todos os perfis autenticados.
     Route::middleware('perfil:administrador,gestor,tecnico')->group(function () {
