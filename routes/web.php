@@ -87,7 +87,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/pendencias', [PendenciaEquipamentoController::class, 'index'])->name('pendencias.index');
         Route::get('/pendencias/criar', [PendenciaEquipamentoController::class, 'create'])->name('pendencias.create');
         Route::post('/pendencias', [PendenciaEquipamentoController::class, 'store'])->name('pendencias.store');
-        Route::patch('/pendencias/{pendencia}/resolver', [PendenciaEquipamentoController::class, 'resolver'])->name('pendencias.resolver');
     });
 
     // Consulta de frotas e trens: todos os perfis autenticados.
