@@ -14,10 +14,30 @@
         <form action="{{ route('equipamentos.movimentacao.store', ['eixo' => $eixo, 'tipo' => $tipo]) }}" method="POST">
             @csrf
             <input type="hidden" name="numero_serie_saida" value="{{ $atual->numero_serie }}">
+            {{-- Opção principal: lista dos equipamentos disponíveis em estoque. --}}
             <div class="form-group">
-                <label class="form-label" for="numero_serie_entrada">Número de série do equipamento em estoque *</label>
-                <input class="form-control" id="numero_serie_entrada" name="numero_serie_entrada" value="{{ old('numero_serie_entrada') }}" maxlength="50" required>
-                <small>Digite um número de série já cadastrado com status <strong>estoque</strong>.</small>
+                <label class="form-label" for="numero_serie_estoque">
+                    Selecionar {{ $tipo === 'rodeiro' ? 'rodeiro' : 'motor' }} em estoque
+                </label>
+                <select class="form-control" id="numero_serie_estoque" name="numero_serie_estoque">
+                    <option value="">Selecione um número de série</option>
+                    @foreach($equipamentosEstoque as $serie)
+                        <option value="{{ $serie }}" @selected(old('numero_serie_estoque') === $serie)>
+                            {{ $serie }}
+                        </option>
+                    @endforeach
+                </select>
+                <small>{{ $equipamentosEstoque->count() }} equipamento(s) com status <strong>estoque</strong>.</small>
+            </div>
+            {{-- Alternativa: permite digitação manual. Se preenchido, este campo
+                 prevalece sobre a seleção feita na lista. A disponibilidade é
+                 sempre verificada novamente no servidor antes da gravação. --}}
+            <div class="form-group">
+                <label class="form-label" for="numero_serie_entrada">Ou digite o número de série manualmente</label>
+                <input class="form-control" id="numero_serie_entrada" name="numero_serie_entrada"
+                       value="{{ old('numero_serie_entrada') }}" maxlength="50"
+                       placeholder="Ex.: RD-SIM-0123456">
+                <small>Informe a série manualmente somente se preferir não utilizar a lista. É necessário preencher ao menos uma das duas opções.</small>
             </div>
             <div class="form-group">
                 <label class="form-label" for="data_movimentacao">Data da substituição *</label>
