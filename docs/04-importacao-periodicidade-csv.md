@@ -1,124 +1,118 @@
-# SGR-M — Módulo de Importação CSV (etapa 1: periodicidade)
+# SGR-M — Módulo 04: Importação das condições dos rodeiros por CSV
 
 **Projeto:** SGR-M — Fatec São Paulo  
 **Disciplina:** Laboratório de Engenharia de Software  
 **Branch:** `feature/modulo-importacao-csv`  
-**Situação:** implementação publicada no GitHub; testes e interface dependem de validação no Laragon.
+**Situação:** código, interface e testes publicados no GitHub; aguardando execução local no Laragon.
 
 ## 1. Objetivo
 
-Atualizar o campo `periodicidade` dos rodeiros cadastrados utilizando um CSV com número de série e periodicidade percentual. O CSV **já fornece o percentual**, portanto não existe cálculo de periodicidade a partir de datas, horas ou quilômetros.
-
-A importação atua apenas sobre as condições dos rodeiros; não modifica instalações, equipamentos vinculados aos eixos, motivos, histórico ou pendências.
+Importar em um único arquivo a identificação da posição e os dados de condição do rodeiro atualmente instalado, atualizando **diâmetros LR/LO, periodicidade e data da condição** somente quando a data do CSV for **estritamente posterior** à última atualização registrada. O arquivo já informa a periodicidade em percentual; não são efetuados cálculos de periodicidade.
 
 ## 2. Regras de negócio
 
-| Regra | Comportamento |
-|---|---|
-| Autorização | Apenas administrador pode importar |
-| Equipamento | Rodeiro identificado por `numero_serie` cadastrado no banco |
-| Colunas | `numero_serie` e `periodicidade` (ordem livre) |
-| Separadores | Ponto e vírgula ou vírgula |
-| Valor | Percentual já calculado, aceitando `95.50`, `95,50` ou `95,50%` |
-| Intervalo | 0 até 999,99%, com até duas casas decimais |
-| Arquivo | Até 2 MB e 10.000 registros |
-| Repetições | A mesma série não pode aparecer duas vezes |
-| Série ausente | Erro; toda a importação é recusada |
-| Atualização | Altera `periodicidade` e `data_atualizacao_condicao` |
-| Integridade | O arquivo inteiro é validado antes de gravar; gravação dentro de transação |
-| Falhas | Nenhum rodeiro tem percentual alterado se o arquivo contiver inconsistências |
-| Pendências | Não cria/encerra pendências automaticamente |
-
-As faixas de atenção e os alertas de periodicidade serão implementados no módulo de priorização, não no processamento do arquivo.
-
-### Exemplo de arquivo
+Formato do arquivo CSV (colunas obrigatórias, ordem livre):
 
 ```csv
-numero_serie;periodicidade
-RD-SIM-4010493;96,50
-RD-SIM-6075655;105,00
+frota;trem;carro;posicao;serie_rodeiro;diametro_lr;diametro_lo;periodicidade;data_atualizacao
+I;I01;I011;1;RD-SIM-0112648;829.10;829.50;95.50;2026-11-21 12:00:00
 ```
 
-Os números de série do arquivo **precisam existir no banco de desenvolvimento**. O exemplo é ilustrativo.
+| Regra | Tratamento |
+|---|---|
+| Permissão | Apenas administrador importa |
+| Identificação | Frota, trem, carro, posição do eixo e número de série do rodeiro |
+| Confirmação física | Confere a instalação ativa do rodeiro naquela posição |
+| Dados | Diâmetro LR, diâmetro LO e periodicidade percentual |
+| Data | `AAAA-MM-DD HH:MM:SS`, correspondente ao instante informado pelo arquivo |
+| Atualização | Apenas se `data_atualizacao` for maior que `data_atualizacao_condicao`; data anterior/igual é ignorada |
+| Rodeiro retirado | Linha ignorada se a série já não estiver instalada na posição informada |
+| Série não cadastrada | Arquivo recusado integralmente |
+| Posição inexistente | Arquivo recusado integralmente |
+| Dados inválidos/duplicados | Arquivo recusado integralmente |
+| Integridade | Atualizações em transação; erro desfaz alterações do lote |
+| Relatório | Total de linhas, atualizados, ignorados por data, ignorados por posição |
+| Formato | CSV UTF-8, preferencialmente separado por `;`, com valores decimais em ponto ou vírgula |
+| Upload | Máximo de 2 MB e 10.000 linhas |
+| Persistência | Não altera vínculo, histórico de substituições ou pendências |
+
+**Observação:** as condições de diâmetros entre LR/LO e eixos, bem como os intervalos definidos exclusivamente para gerar dados fictícios de teste, **não são regras de validação do sistema**. A aplicação valida apenas formato e integridade dos valores.
 
 ## 3. Arquivos e responsabilidades
 
-| Arquivo | Finalidade |
+| Arquivo | Responsabilidade |
 |---|---|
-| `app/Services/ImportacaoPeriodicidadeCsvService.php` | Abre e valida CSV, normaliza percentuais e executa gravação transacional |
-| `app/Http/Controllers/ImportacaoPeriodicidadeController.php` | Valida upload e apresenta feedback de sucesso/erro |
-| `resources/views/importacoes/periodicidade.blade.php` | Formulário de envio com instruções e exemplo |
-| `routes/web.php` | Rotas GET/POST sob `auth` e `perfil:administrador` |
-| `resources/views/layouts/app.blade.php` | Link Importar CSV apenas para administrador |
-| `tests/Feature/ImportacaoPeriodicidadeCsvTest.php` | Testes de autenticação, dados válidos e inconsistências |
-| `docs/04-importacao-periodicidade-csv.md` | Documentação acadêmica da implementação |
+| `app/Services/ImportacaoPeriodicidadeCsvService.php` | Lê CSV, confere posição/série e compara datas antes de atualizar |
+| `app/Http/Controllers/ImportacaoPeriodicidadeController.php` | Processa upload e exibe resumo do resultado |
+| `resources/views/importacoes/periodicidade.blade.php` | Novo formulário e instruções para nove colunas |
+| `tests/Feature/ImportacaoPeriodicidadeCsvTest.php` | Testes de importação, atualização por data, referência cruzada e rollback |
+| `routes/web.php` | Rotas já existentes do módulo, protegidas para administrador |
+| `resources/views/layouts/app.blade.php` | Atalho já existente para importação |
+| `docs/04-importacao-periodicidade-csv.md` | Documentação acadêmica da evolução |
 
-**Não há migrations novas:** são utilizadas as colunas de periodicidade e data de atualização já existentes no Model Rodeiro.
+Não foi necessária uma migration: a tabela `rodeiros` já contém os campos `diametro_lr`, `diametro_lo`, `periodicidade` e `data_atualizacao_condicao`.
 
-## 4. Métodos e recursos de programação
+## 4. Métodos e técnicas utilizados
 
-- **`ImportacaoPeriodicidadeController::create()`:** exibe a tela de importação.
-- **`ImportacaoPeriodicidadeController::store()`:** valida upload CSV/TXT de até 2 MB, chama o serviço e retorna relatório sucinto de quantidade atualizada.
-- **`ImportacaoPeriodicidadeCsvService::importar(UploadedFile)`:** abre arquivo via `fopen()`, lê cabeçalho e linhas com `fgets()` e `fgetcsv()`, valida colunas e valores, recusa séries duplicadas ou desconhecidas e atualiza registros por número de série.
-- **`number_format()`:** normaliza percentual com duas casas decimais para persistência.
-- **`DB::transaction()`:** garante atomicidade; falha no processamento de qualquer atualização reverte a operação.
-- **`ValidationException::withMessages()`:** informa ao usuário o problema sem lançar mensagens SQL brutas.
-- **`whereIn()` e `array_diff()`:** conferem previamente quais números de série existem.
-- **`finally { fclose(...); }`:** fecha o arquivo mesmo em caso de erro.
-- **`RefreshDatabase`:** testes independentes com SQLite em memória.
+- **`ImportacaoPeriodicidadeCsvService::importar(UploadedFile)`:** valida cabeçalho, cada linha, séries e datas; percorre o lote sob transação.
+- **`fgetcsv()`:** lê as linhas separadas por `;` ou `,`.
+- **`Carbon::createFromFormat()`:** interpreta a data com hora, que é armazenada como origem da medição.
+- **`whereHas()`:** valida que eixo/carro/trem/frota pertencem à hierarquia informada.
+- **`InstalacaoRodeiro::whereNull('data_retirada')`:** recupera a instalação ativa.
+- **`lockForUpdate()`:** protege eixo e rodeiro durante a atualização.
+- **`greaterThan()`:** compara a data informada com a última registrada.
+- **`DB::transaction()`:** impede atualizações parciais diante de falhas no lote.
+- **`ValidationException::withMessages()`:** devolve erros legíveis.
+- **`ImportacaoPeriodicidadeController::store()`:** valida upload, chama serviço e mostra totais atualizados/ignorados.
 
 ## 5. Procedimento no Laragon
 
-A Entrega 03 foi integrada à `develop` pelo PR #6. Para atualizar seu repositório local e acessar a nova branch:
+Atualize a branch do Módulo 04:
 
 ```bash
-git status
-git switch develop
-git pull origin develop
-git fetch origin
-git switch -c feature/modulo-importacao-csv --track origin/feature/modulo-importacao-csv
+git switch feature/modulo-importacao-csv
+git pull origin feature/modulo-importacao-csv
 php artisan test --filter=ImportacaoPeriodicidadeCsvTest
 php artisan test
 ```
 
-Se a branch já existir localmente, utilizar `git switch feature/modulo-importacao-csv` e `git pull`.
+Se ainda não possuir a branch local, execute antes:
 
-**Não executar `migrate:fresh`, `migrate` ou `db:seed` para esta etapa:** não criamos tabelas adicionais.
-
-## 6. Verificação no navegador e banco
-
-1. Realizar login como administrador e abrir `http://sgr-m.test/importacoes/periodicidade`.
-2. Exportar ou montar CSV usando números de série fictícios existentes no banco.
-3. Importar um CSV pequeno e conferir a mensagem de sucesso.
-4. Consultar o rodeiro por série e verificar os percentuais atualizados.
-5. Tentar enviar um CSV com série desconhecida, percentual inválido ou série duplicada.
-6. Conferir que o sistema rejeitou o arquivo e não atualizou sequer as linhas válidas.
-7. Realizar login com perfil gestor/técnico; o acesso ao módulo deve retornar 403.
-
-No Tinker, após importar:
-
-```php
-App\Models\Rodeiro::where('numero_serie', 'RD-SIM-4010493')->first(['numero_serie', 'periodicidade', 'data_atualizacao_condicao']);
+```bash
+git fetch origin
+git switch -c feature/modulo-importacao-csv --track origin/feature/modulo-importacao-csv
 ```
 
-Substitua a série ilustrativa por uma série cadastrada no seu banco.
+**Não usar `migrate:fresh`.** Nesta etapa não há migration nova.
+
+## 6. Verificação funcional
+
+1. Entrar no sistema como administrador.
+2. Abrir `http://sgr-m.test/importacoes/periodicidade`.
+3. Realizar backup do banco de desenvolvimento antes de importar arquivos de teste.
+4. Importar o CSV fictício da Frota I; conferir número de linhas atualizadas e ignoradas.
+5. Consultar rodeiros por série e conferir os três valores de condição e a data da atualização.
+6. Reimportar o **mesmo arquivo**: nenhuma linha já atualizada poderá ser alterada novamente (data igual).
+7. Enviar CSV contendo um número de série inexistente: a importação deve ser recusada.
+8. Verificar em uma posição na qual ocorreu substituição anterior: a série antiga, ainda existente no banco, deve ser ignorada por não corresponder à instalação ativa.
+9. Repetir importação das frotas J e L.
 
 ## 7. Testes, evidências e limitações
 
-Os testes criados cobrem controle de acesso, importação de múltiplas linhas com separadores/formatos numéricos distintos, cabeçalho em ordem invertida, série inexistente, duplicidade, percentuais inválidos e arquivo vazio ou cabeçalho incorreto.
+Testes Feature de autorização, atualização dos três valores, tratamento de data igual, data posterior, série divergente da posição, posição inexistente, série desconhecida, valores inválidos e duplicidades.
 
-**Evidência ainda pendente:** execução da suíte no Laragon, inspeção da interface e uma importação de demonstração. Não declarar testes aprovados antes da confirmação local.
+**Situação:** testes criados no GitHub, ainda sem execução confirmada pelo usuário para esta nova especificação.
 
-**Limitações:** o módulo implementa **somente periodicidade** nesta primeira versão; diâmetros LR/LO serão objeto da próxima etapa. Não há histórico por lote de importação ou função de pré-visualização de alterações. Para demonstrar no MySQL, faça backup do banco de desenvolvimento antes de importar, pois os valores existentes serão substituídos.
+**Limitações:** a importação não gera histórico de cada lote, tela de pré-visualização nem atualização de rodeiros fora da instalação ativa. Arquivos de instalações antigas não alteram a peça retirada. O registro `data_atualizacao_condicao` representa a data enviada no CSV, não o horário em que o upload foi efetuado.
 
-## 8. Conceitos acadêmicos e apresentação
+## 8. Conceitos acadêmicos
 
-- **Separação de responsabilidades (MVC + serviço):** a interface recebe o upload e o serviço implementa regras da importação.
-- **Validação de entradas:** arquivo, cabeçalho, colunas, séries e domínio de percentuais.
-- **Atomicidade transacional:** erros bloqueiam a importação completa.
-- **Persistência controlada:** atualização dirigida pelo número de série, sem alteração de vínculos do equipamento.
-- **Segurança por perfil:** importação administrativa.
-- **Testes automatizados:** fluxos válidos, entradas malformadas e ausência de efeitos parciais.
-- **Desenvolvimento incremental e GitFlow simplificado:** nova branch derivada da `develop` após conclusão da Entrega 03.
+- **Engenharia de requisitos:** especificação da estrutura e da regra temporal de atualização.
+- **Integridade referencial:** validação cruzada de posição e número de série instalado.
+- **Consistência temporal:** proteção contra sobrescrita por medições desatualizadas.
+- **Atomicidade ACID:** todas as atualizações válidas do lote são aplicadas em transação.
+- **Segurança:** importação restrita a administrador e validação de entradas.
+- **Testes automatizados:** cenários válidos, inválidos e preservação de dados.
+- **Desenvolvimento incremental:** evolução do primeiro importador para a carga unificada.
 
-**Resumo para apresentar:** “O módulo de importação processa percentuais de periodicidade fornecidos por CSV, identifica rodeiros por série e valida o arquivo inteiro antes de atualizar os registros em transação, protegendo a integridade dos dados.”
+**Resumo para apresentação:** “A importação CSV atualiza diâmetros e periodicidade em conjunto, validando a posição do rodeiro e comparando a data da medição com o último registro para impedir sobrescritas por informações antigas.”
