@@ -47,9 +47,9 @@ A estrutura e a carga fictícia de frotas, trens, carros, eixos, rodeiros e moto
 
 Registro, consulta, filtragem e resolução de pendências técnicas de rodeiros e motores, classificadas como **crítica, alta, média ou baixa**. O módulo possui testes automatizados, ainda sujeitos à validação no ambiente local.
 
-### 4.3. Importação de dados CSV — planejada
+### 4.3. Importação de dados CSV — iniciada
 
-Importação e validação de informações sobre **periodicidade percentual** dos rodeiros e **diâmetros LR e LO**.
+Importação de **periodicidade percentual** por número de série, com validação completa do CSV, transação e controle de acesso do administrador. A importação de **diâmetros LR e LO** permanece como próxima etapa.
 
 ### 4.4. Priorização de equipamentos — planejada
 
@@ -148,7 +148,8 @@ As restrições de exclusividade de instalações ativas utilizam **colunas gera
 | 02 | Autenticação e controle de acesso por perfis | Implementada; testes manuais aprovados |
 | 03 | Consultas, cadastro de frotas/trens, cargas iniciais e movimentação | Implementada e validada incrementalmente no Laragon |
 | Atual | Gestão de pendências técnicas | Implementação inicial; testes pendentes |
-| Futuras | Movimentações, pendências, importação CSV, priorização e indicadores | Planejadas |
+| 04 | Importação de periodicidade CSV | Implementação enviada ao GitHub, aguardando testes |
+| Futuras | Importação de diâmetros, priorização e indicadores | Planejadas |
 
 ### Concluído
 
@@ -169,7 +170,8 @@ As restrições de exclusividade de instalações ativas utilizam **colunas gera
 - [ ] CRUD visual de carros, eixos, rodeiros e motores.
 - [x] Implementação inicial de gestão de pendências técnicas (testes locais pendentes).
 - [x] Serviços transacionais de movimentação.
-- [ ] Importação e validação de arquivos CSV.
+- [x] Implementação inicial de importação CSV de periodicidade (testes locais pendentes).
+- [ ] Importação de diâmetros LR/LO.
 - [ ] Ranking de priorização.
 - [ ] Indicadores operacionais do dashboard.
 - [ ] Interface administrativa de gerenciamento de usuários.
@@ -329,6 +331,7 @@ Os relatórios detalhados ficam na pasta [`docs/`](docs/):
 - [Entrega 03 — Movimentação de Equipamentos](docs/03-movimentacao-equipamentos.md).
 - [Entrega 03 — Catálogo de Motivos de Retirada](docs/03-motivos-retirada.md).
 - [Entrega 03 — Gestão de Pendências Técnicas](docs/03-gestao-pendencias.md).
+- [Entrega 04 — Importação de Periodicidade CSV](docs/04-importacao-periodicidade-csv.md).
 
 Os documentos descrevem as decisões técnicas, os componentes implementados, os testes manuais e as limitações de cada etapa.
 
