@@ -187,4 +187,102 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
 
         $this->assertNull($r['primeiro']->fresh()->periodicidade);
     }
+
+    /** Cada linha é apresentada com resultado e justificativa específica. */
+    public function test_relatorio_mostra_atualizados_e_ignorados_com_motivos(): void
+    {
+        $r = $this->preparar();
+
+        // Um rodeiro já possui data igual à informada e deve ser ignorado.
+        $r['segundo']->update([
+            'periodicidade' => 60,
+            'data_atualizacao_condicao' => '2026-11-21 12:00:00',
+        ]);
+
+        $this->actingAs($this->administrador())->post(route('importacoes.periodicidade.store'), [
+            'arquivo' => $this->csv(
+                "I;I01;I011;1;RD-001;825;826;95;2026-11-21 12:00:00\n"
+                . "I;I01;I011;2;RD-002;810;811;100;2026-11-21 12:00:00\n"
+            ),
+        ])->assertRedirect(route('importacoes.periodicidade.create'));
+
+        $this->get(route('importacoes.periodicidade.create'))
+            ->assertOk()
+            ->assertSee('Resultado detalhado da última importação')
+            ->assertSee('RD-001')
+            ->assertSee('RD-002')
+            ->assertSee('Atualizado')
+            ->assertSee('Ignorado')
+            ->assertSee('Data do CSV igual ou anterior')
+            ->assertSee('Exportar relatório CSV');
+
+        // A data antiga e a periodicidade original não são sobrescritas.
+        $this->assertSame('60.00', $r['segundo']->fresh()->periodicidade);
+    }
+
+    /** Divergência de posição identifica o rodeiro efetivamente instalado. */
+    public function test_relatorio_indica_serie_instalada_quando_divergente(): void
+    {
+        $this->preparar();
+        $this->actingAs($this->administrador())->post(route('importacoes.periodicidade.store'), [
+            'arquivo' => $this->csv(
+                "I;I01;I011;1;RD-002;800;801;90;2026-11-21 12:00:00\n"
+            ),
+        ])->assertSessionHas('success');
+
+        $this->get(route('importacoes.periodicidade.create'))
+            ->assertOk()
+            ->assertSee('Série divergente')
+            ->assertSee('RD-001');
+    }
+
+    /** O CSV exportado contém todas as linhas com status e motivo. */
+    public function test_exporta_relatorio_csv_da_sessao(): void
+    {
+        $this->preparar();
+        $admin = $this->administrador();
+
+        $this->actingAs($admin)->get(route('importacoes.periodicidade.exportar'))
+            ->assertNotFound();
+
+        $this->post(route('importacoes.periodicidade.store'), [
+            'arquivo' => $this->csv(
+                "I;I01;I011;1;RD-001;825;826;95;2026-11-21 12:00:00\n"
+                . "I;I01;I011;1;RD-002;825;826;95;2026-11-21 12:00:00\n"
+            ),
+        ])->assertSessionHas('success');
+
+        $response = $this->get(route('importacoes.periodicidade.exportar'));
+        $response->assertOk()
+            ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+
+        // StreamedResponse gera conteúdo apenas quando o callback é executado.
+        ob_start();
+        $response->baseResponse->sendContent();
+        $conteudo = ob_get_clean();
+
+        $this->assertStringContainsString('serie_rodeiro', $conteudo);
+        $this->assertStringContainsString('RD-001', $conteudo);
+        $this->assertStringContainsString('RD-002', $conteudo);
+        $this->assertStringContainsString('ignorado', $conteudo);
+        $this->assertStringContainsString('atualizado', $conteudo);
+    }
+
+    /** Um usuário distinto não recebe relatório de outra sessão. */
+    public function test_outro_usuario_nao_acessa_resultado_de_importacao_alheio(): void
+    {
+        $this->preparar();
+        $admin = $this->administrador();
+        $this->actingAs($admin)->post(route('importacoes.periodicidade.store'), [
+            'arquivo' => $this->csv(
+                "I;I01;I011;1;RD-001;825;826;95;2026-11-21 12:00:00\n"
+            ),
+        ])->assertSessionHas('success');
+
+        // Perfil técnico continua sem acesso, mesmo que a sessão tenha o token.
+        $tecnico = User::factory()->create(['perfil' => 'tecnico']);
+        $this->actingAs($tecnico)
+            ->get(route('importacoes.periodicidade.exportar'))->assertForbidden();
+    }
+
 }
