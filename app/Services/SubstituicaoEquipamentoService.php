@@ -7,6 +7,7 @@ use App\Models\InstalacaoMotor;
 use App\Models\InstalacaoRodeiro;
 use App\Models\Motor;
 use App\Models\MotivoRetirada;
+use App\Models\PendenciaEquipamento;
 use App\Models\Rodeiro;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -144,6 +145,21 @@ class SubstituicaoEquipamentoService
             // Atualizações de status na mesma transação dos vínculos.
             $equipamentoSaida->update(['status' => 'em_manutencao']);
             $equipamentoEntrada->update(['status' => 'instalado']);
+
+            // Somente a troca concluída resolve as pendências abertas daquele
+            // equipamento na posição de origem. A resolução integra a mesma
+            // transação: erro em qualquer etapa desfaz também o encerramento.
+            // Pendências de outros eixos/tipos continuam inalteradas.
+            PendenciaEquipamento::query()
+                ->where('eixo_id', $eixo->id)
+                ->where($fk, $equipamentoSaida->id)
+                ->where('situacao', 'aberta')
+                ->update([
+                    'situacao' => 'resolvida',
+                    'resolvida_em' => now(),
+                    'observacoes_resolucao' => 'Encerrada automaticamente pela substituição do equipamento.',
+                    'updated_at' => now(),
+                ]);
         }, 3);
     }
 }
