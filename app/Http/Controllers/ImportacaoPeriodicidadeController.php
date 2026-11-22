@@ -54,9 +54,9 @@ class ImportacaoPeriodicidadeController extends Controller
 
         return redirect()->route('importacoes.periodicidade.create')
             ->with('success', sprintf(
-                'Importação processada: %d linha(s), %d atualizado(s), %d ignorado(s) por data e %d ignorado(s) por posição/série divergente.',
-                $resultado['linhas'], $resultado['atualizados'],
-                $resultado['ignorados_data'], $resultado['ignorados_posicao']
+                'Importação processada: %d linha(s); rodeiros atualizados: %d; motores atualizados: %d. Linhas com alguma atualização: %d.',
+                $resultado['linhas'], $resultado['rodeiros_atualizados'],
+                $resultado['motores_atualizados'], $resultado['atualizados']
             ));
     }
 
@@ -77,8 +77,9 @@ class ImportacaoPeriodicidadeController extends Controller
             fwrite($saida, "\xEF\xBB\xBF");
             fputcsv($saida, [
                 'linha', 'frota', 'trem', 'carro', 'posicao', 'serie_rodeiro',
-                'diametro_lr', 'diametro_lo', 'periodicidade', 'data_atualizacao',
-                'status', 'motivo',
+                'diametro_lr', 'diametro_lo', 'periodicidade',
+                'serie_motor', 'periodicidade_motor', 'data_atualizacao',
+                'status_rodeiro', 'motivo_rodeiro', 'status_motor', 'motivo_motor',
             ], ';');
 
             foreach ($relatorio['detalhes'] as $item) {
@@ -86,7 +87,9 @@ class ImportacaoPeriodicidadeController extends Controller
                     $item['linha'], $item['frota'], $item['trem'], $item['carro'],
                     $item['posicao'], $item['serie_rodeiro'], $item['diametro_lr'],
                     $item['diametro_lo'], $item['periodicidade'],
-                    $item['data_atualizacao'], $item['status'], $item['motivo'],
+                    $item['serie_motor'], $item['periodicidade_motor'],
+                    $item['data_atualizacao'], $item['status_rodeiro'],
+                    $item['motivo_rodeiro'], $item['status_motor'], $item['motivo_motor'],
                 ], ';');
             }
 
