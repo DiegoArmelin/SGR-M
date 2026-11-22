@@ -24,7 +24,8 @@
             <a href="{{ route('dashboard.gerencial') }}">Visão geral</a>
             <a href="{{ route('dashboard.historico') }}" class="selected" aria-current="page">Histórico de substituições</a>
         </nav>
-        <p>Consulte o histórico real ou fictício registrado, conforme filtros de período, frota e defeito.</p>
+        <p>Consulte as substituições registradas, com filtros de período, frota e motivo da retirada.</p>
+        <p class="hg-muted" style="padding:10px;background:#fff7ed;border-radius:6px"><strong>Atenção:</strong> a base de demonstração pode incluir registros acadêmicos sintéticos (séries HIST). Os totais apresentados não devem ser interpretados como dados operacionais reais.</p>
 
         <form method="GET" action="{{ route('dashboard.historico') }}" class="hg-filters">
             <div><label class="form-label" for="inicio">Data inicial</label>
