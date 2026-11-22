@@ -51,7 +51,13 @@
             <h2>1. Pendências técnicas — {{ $tipo === 'rodeiro' ? 'Rodeiros' : 'Motores' }}</h2>
             <p class="rank-description">Pendências abertas, ordenadas por prioridade: crítica, alta, média e baixa.</p>
             @include('ranking.partials.filtros', ['prefixo'=>'p','mostrarPrioridade'=>true])
-            <p class="rank-small"><strong>{{ $totalPendencias }}</strong> pendência(s) com os filtros aplicados. Exibindo até 10.</p>
+            <div class="rank-cards">
+                <div class="rank-card"><strong>{{ $totalPendencias }}</strong><small>Total de pendências (filtros aplicados)</small></div>
+                @foreach(['critica'=>'Críticas','alta'=>'Altas','media'=>'Médias','baixa'=>'Baixas'] as $chave=>$rotulo)
+                    <div class="rank-card"><strong>{{ $pendenciasPorPrioridade[$chave] ?? 0 }}</strong><small>{{ $rotulo }} na localização filtrada</small></div>
+                @endforeach
+            </div>
+            <p class="rank-small">Exibindo as 10 primeiras pendências de acordo com a prioridade selecionada.</p>
             <div class="rank-scroll"><table class="rank-table">
                 <thead><tr>
                     <th>Prioridade</th><th>Trem</th><th>Carro–posição</th><th>Série</th>
@@ -116,11 +122,18 @@
             </table></div>
         </section>
 
+        @endif
+
         <section class="rank-section" id="periodicidades">
-            <h2>3. Periodicidade dos rodeiros</h2>
+            <h2>{{ $tipo === 'rodeiro' ? '3' : '2' }}. Periodicidade dos {{ $tipo === 'rodeiro' ? 'rodeiros' : 'motores' }}</h2>
             <p class="rank-description">Periodicidade vencida (maior ou igual a 100%), ordenada do maior percentual para o menor.</p>
             @include('ranking.partials.filtros', ['prefixo'=>'r','mostrarPrioridade'=>false])
-            <p class="rank-small"><strong>{{ $totalPeriodicidades }}</strong> rodeiro(s) com periodicidade vencida. Exibindo os 10 maiores percentuais.</p>
+            <div class="rank-cards">
+                <div class="rank-card"><strong>{{ $totalPeriodicidades }}</strong><small>Periodicidade ≥ 100%</small></div>
+                <div class="rank-card"><strong>{{ $periodicidades105 }}</strong><small>Periodicidade ≥ 105%</small></div>
+                <div class="rank-card"><strong>{{ $periodicidades110 }}</strong><small>Periodicidade ≥ 110%</small></div>
+            </div>
+            <p class="rank-small">Exibindo os 10 maiores percentuais com os filtros aplicados.</p>
             <div class="rank-scroll"><table class="rank-table">
                 <thead><tr><th>Posição no ranking</th><th>Trem</th><th>Carro–posição</th><th>Série</th><th>Periodicidade</th><th>Ações</th></tr></thead>
                 <tbody>
@@ -130,16 +143,18 @@
                         <td>{{ $item->trem }}</td><td><strong>{{ $item->carro }}-{{ $item->posicao }}</strong></td>
                         <td>{{ $item->numero_serie }}</td>
                         <td><span class="rank-badge rank-alta">{{ number_format((float)$item->periodicidade,2,',','.') }}%</span></td>
-                        <td class="rank-action"><a href="{{ route('equipamentos.movimentacao.create', ['eixo'=>$item->eixo_id,'tipo'=>'rodeiro']) }}">Consultar substituição</a></td>
+                        <td class="rank-action"><a href="{{ route('equipamentos.historico', ['eixo'=>$item->eixo_id]) }}">Histórico</a>
+                            @if(auth()->user()->temPerfil('administrador','tecnico'))
+                                <div><a href="{{ route('equipamentos.movimentacao.create', ['eixo'=>$item->eixo_id,'tipo'=>$tipo]) }}">Substituir</a></div>
+                            @endif
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6">Nenhum rodeiro com periodicidade a partir de 100%.</td></tr>
+                    <tr><td colspan="6">Nenhum equipamento com periodicidade a partir de 100%.</td></tr>
                 @endforelse
                 </tbody>
             </table></div>
         </section>
-        @endif
-
         <p class="rank-small">Os rankings apresentam apenas equipamentos instalados. Os indicadores são auxiliares e não substituem avaliação técnica.</p>
     </section>
 </main>
@@ -147,21 +162,37 @@
 
 @push('scripts')
 <script>
-    // Atualiza as opções de carro quando o trem muda, independentemente
-    // em cada tabela. Sem JavaScript, o servidor continua validando os filtros.
+    // Em cada formulário, frota restringe trens e carros; trem restringe
+    // carros. A lógica é independente entre os três quadros da página.
     document.querySelectorAll('.rank-filters').forEach(form => {
+        const frota = form.querySelector('.rank-frota');
         const trem = form.querySelector('.rank-trem');
         const carro = form.querySelector('.rank-carro');
-        const atualizarCarros = (limpar) => {
+
+        function ajustarTrens(limparDependentes = false) {
+            if (limparDependentes) { trem.value = ''; carro.value = ''; }
+            const f = frota.value;
+            Array.from(trem.options).forEach(opcao => {
+                if (!opcao.value) return;
+                opcao.hidden = !!f && opcao.dataset.frota !== f;
+            });
+            ajustarCarros();
+        }
+
+        function ajustarCarros(limpar = false) {
             if (limpar) carro.value = '';
-            const codigoTrem = trem.value;
+            const f = frota.value;
+            const t = trem.value;
             Array.from(carro.options).forEach(opcao => {
                 if (!opcao.value) return;
-                opcao.hidden = codigoTrem !== '' && opcao.dataset.trem !== codigoTrem;
+                opcao.hidden = (!!f && opcao.dataset.frota !== f)
+                    || (!!t && opcao.dataset.trem !== t);
             });
-        };
-        trem.addEventListener('change', () => atualizarCarros(true));
-        atualizarCarros(false);
+        }
+
+        frota.addEventListener('change', () => ajustarTrens(true));
+        trem.addEventListener('change', () => ajustarCarros(true));
+        ajustarTrens();
     });
 </script>
 @endpush
