@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /** Ocorrência técnica registrada em um rodeiro ou motor individual. */
 class PendenciaEquipamento extends Model
 {
+    // Nome explícito: o plural automático do Eloquent não corresponde à migration.
+    protected $table = 'pendencias_equipamentos';
+
     protected $fillable = [
         'rodeiro_id', 'motor_id', 'descricao', 'prioridade', 'situacao',
         'registrado_por', 'resolvida_em', 'observacoes_resolucao',
