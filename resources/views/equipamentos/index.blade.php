@@ -26,7 +26,7 @@
                 <label class="form-label" for="status">Situação cadastral</label>
                 <select class="form-control" name="status" id="status">
                     <option value="">Todas</option>
-                    @foreach (['disponivel' => 'Disponível', 'instalado' => 'Instalado', 'em_manutencao' => 'Em manutenção', 'inativo' => 'Inativo'] as $valor => $rotulo)
+                    @foreach (['estoque' => 'Em estoque', 'instalado' => 'Instalado', 'em_manutencao' => 'Em manutenção', 'inativo' => 'Inativo'] as $valor => $rotulo)
                         <option value="{{ $valor }}" @selected($status === $valor)>{{ $rotulo }}</option>
                     @endforeach
                 </select>
@@ -53,7 +53,7 @@
                     @forelse ($equipamentos as $equipamento)
                         <tr style="border-bottom:1px solid #e2e8f0;">
                             <td style="padding:12px;">{{ $equipamento->numero_serie }}</td>
-                            <td style="padding:12px;">{{ ['disponivel' => 'Disponível', 'instalado' => 'Instalado', 'em_manutencao' => 'Em manutenção', 'inativo' => 'Inativo'][$equipamento->status] ?? $equipamento->status }}</td>
+                            <td style="padding:12px;">{{ ['estoque' => 'Em estoque', 'instalado' => 'Instalado', 'em_manutencao' => 'Em manutenção', 'inativo' => 'Inativo'][$equipamento->status] ?? $equipamento->status }}</td>
                             @if ($tipo === 'rodeiro')
                                 <td style="padding:12px;">{{ $equipamento->diametro_lr !== null ? number_format((float) $equipamento->diametro_lr, 2, ',', '.') : '—' }}</td>
                                 <td style="padding:12px;">{{ $equipamento->diametro_lo !== null ? number_format((float) $equipamento->diametro_lo, 2, ',', '.') : '—' }}</td>
