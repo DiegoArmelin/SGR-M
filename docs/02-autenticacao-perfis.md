@@ -1,262 +1,120 @@
-# SGR-M — Relatório Técnico de Desenvolvimento
+# SGR-M — Entrega 02: Autenticação e controle de acesso por perfis
 
-**Entrega 02 — Autenticação e Controle de Acesso por Perfis**
-
-**Projeto:** Sistema de Gestão de Rodeiros e Motores (SGR-M)  
+**Projeto:** Sistema de Gestão de Rodeiros e Motores (SGR-M) — Grupo 10 — Fatec São Paulo  
 **Disciplina:** Laboratório de Engenharia de Software  
-**Instituição:** Fatec São Paulo  
-**Grupo:** 10  
-**Data:** 08/11/2026  
-**Branch:** `feature/autenticacao-perfis`  
-**Situação:** Implementação concluída e testes manuais aprovados. Integração à branch `develop` pendente de confirmação.
+**Entrega:** 02 — Autenticação e Controle de Acesso  
+**Data original:** 08/11/2026  
+**Branch original:** `feature/autenticacao-perfis`  
+**Situação:** autenticação, middleware e interfaces implementados; testes manuais relatados na entrega original. A implementação foi posteriormente integrada à `develop`.
 
----
+## 1. Objetivo
 
-## 1. Objetivo da entrega
+Identificar usuários por login e senha, manter sessões autenticadas e aplicar autorização por papéis. A meta é disponibilizar uma base de segurança reutilizável para os módulos funcionais, distinguindo **autenticação** (identidade) de **autorização** (permissões do perfil).
 
-Implementar o mecanismo inicial de autenticação e autorização do SGR-M, permitindo que diferentes categorias de usuários acessem o sistema de acordo com suas responsabilidades.
+## 2. Regras de negócio e perfis
 
-A implementação busca estabelecer uma base de segurança para os próximos módulos, restringindo o acesso às funcionalidades e impedindo que usuários não autorizados executem operações protegidas.
+| Perfil | Consulta de equipamentos | Cadastro de equipamentos | Registro de pendências (planejado) | Movimentação (planejada) | Gestão de usuários (planejada) |
+|---|---|---|---|---|---|
+| Administrador | Sim | Sim | Sim | Sim | Sim |
+| Gestor | Sim | Não | Sim | Não | Não |
+| Técnico | Sim | Não | Sim | Sim | Não |
 
-## 2. Tecnologias utilizadas
+A tabela representa a **matriz de permissões do projeto**. A Entrega 02 implementou o mecanismo de autorização e testou seu comportamento com rotas temporárias; as permissões dos recursos reais são aplicadas progressivamente conforme os módulos são construídos.
 
-- **Framework:** Laravel 12.70.2.
-- **Linguagem:** PHP 8.3.28.
-- **Banco de dados:** MySQL 8.4.3.
-- **Ambiente local:** Laragon.
-- **Interface:** Blade, HTML e CSS.
-- **Autenticação:** Laravel Auth, baseada em sessões.
-- **Controle de acesso:** Middleware personalizado.
-- **ORM:** Eloquent.
-- **Versionamento:** Git e GitHub.
+- Login com credenciais válidas inicia uma sessão.
+- Credenciais inválidas geram mensagem genérica, sem revelar qual campo estava incorreto.
+- Após o login, a sessão é regenerada; no logout, é invalidada e o token CSRF é renovado.
+- Rotas autenticadas exigem sessão ativa; perfis incompatíveis recebem HTTP **403**.
+- As tentativas de login são limitadas inicialmente por `throttle:5,1`.
+- O campo `perfil` utiliza `administrador`, `gestor` ou `tecnico` (valor padrão `tecnico`).
 
-## 3. Estrutura de autenticação implementada
+## 3. Arquivos e responsabilidades
 
-A autenticação foi desenvolvida utilizando os recursos nativos do Laravel, sem a instalação de pacotes externos específicos para essa finalidade.
-
-O módulo contempla:
-
-- Formulário de login.
-- Validação de credenciais.
-- Autenticação baseada em sessão.
-- Regeneração do identificador de sessão após login.
-- Encerramento da sessão.
-- Invalidação da sessão no logout.
-- Regeneração do token CSRF no logout.
-- Proteção de rotas.
-- Controle de acesso baseado em perfis.
-
-### 3.1. LoginController
-
-Foi criado o controlador `Auth/LoginController.php`, responsável pelo processamento das operações de autenticação.
-
-Seus métodos são:
-
-| Método | Responsabilidade |
+| Arquivo | Responsabilidade |
 |---|---|
-| `showLoginForm()` | Exibir o formulário de login |
-| `login()` | Validar credenciais e autenticar o usuário |
-| `logout()` | Encerrar a sessão do usuário |
+| `app/Http/Controllers/Auth/LoginController.php` | Exibição do login, autenticação e logout |
+| `app/Http/Middleware/VerificarPerfil.php` | Confere se o usuário tem perfil autorizado |
+| `app/Models/User.php` | Atributo perfil, constantes e métodos de identificação de papel |
+| `database/migrations/2026_11_08_143415_add_perfil_to_users_table.php` | Acrescenta `perfil` à tabela `users` |
+| `database/seeders/UserTestSeeder.php` | Cria contas fictícias de gestor e técnico para testes locais |
+| `bootstrap/app.php` | Registra o alias de middleware `perfil` |
+| `routes/web.php` | Rotas de login, dashboard e logout protegidas por middlewares |
+| `resources/views/auth/login.blade.php` | Formulário de autenticação, erros e token CSRF |
+| `resources/views/layouts/app.blade.php` | Layout compartilhado, identificação do usuário e botão de logout |
+| `resources/views/dashboard.blade.php` | Painel inicial com cartões informativos |
 
-A autenticação utiliza o método `Auth::attempt()` do Laravel, que verifica as credenciais fornecidas pelo usuário.
+Os cartões de dashboard dessa etapa não eram indicadores operacionais reais.
 
-Em caso de sucesso, o sistema regenera o identificador da sessão e redireciona o usuário ao dashboard.
+## 4. Métodos e recursos de programação
 
-Em caso de falha, retorna uma mensagem genérica de credenciais inválidas.
-
-### 3.2. Rotas
-
-Foram implementadas rotas para login, dashboard e logout.
-
-| Método HTTP | Rota | Finalidade |
-|---|---|---|
-| GET | `/` | Redirecionamento inicial |
-| GET | `/login` | Exibição do formulário |
-| POST | `/login` | Processamento da autenticação |
-| GET | `/dashboard` | Painel principal autenticado |
-| POST | `/logout` | Encerramento da sessão |
-
-As rotas utilizam os middlewares `guest`, `auth` e `throttle`, conforme sua finalidade.
-
-## 4. Alterações no banco de dados
-
-Foi desenvolvida uma migration para acrescentar o campo `perfil` à tabela `users`.
-
-O campo utiliza o tipo `ENUM`, contemplando os seguintes valores:
-
-- `administrador`
-- `gestor`
-- `tecnico`
-
-O valor padrão definido é `tecnico`.
-
-A alteração foi implementada por meio de uma nova migration, preservando o histórico de evolução do banco de dados.
-
-## 5. Atualização do Model User
-
-O Model `User` foi atualizado para contemplar o atributo `perfil` e oferecer métodos auxiliares de identificação e autorização.
-
-Foram implementados:
-
-- `isAdministrador()`
-- `isGestor()`
-- `isTecnico()`
-- `temPerfil()`
-
-Também foram definidas constantes para padronizar os valores dos perfis.
-
-Os métodos foram validados manualmente utilizando o Laravel Tinker, apresentando os resultados esperados.
-
-O armazenamento das senhas permanece protegido pelo mecanismo de hash do Laravel.
-
-## 6. Controle de acesso por perfis
-
-Foi implementado o middleware personalizado `VerificarPerfil`, responsável por verificar se o usuário autenticado possui um dos perfis autorizados para acessar determinada rota.
-
-O middleware foi registrado no arquivo `bootstrap/app.php`, utilizando o alias `perfil`.
-
-O acesso a uma funcionalidade depende de duas condições:
-
-1. O usuário deve estar autenticado.
-2. Seu perfil deve estar entre os perfis autorizados para a rota solicitada.
-
-Quando um usuário autenticado tenta acessar uma funcionalidade incompatível com seu perfil, o sistema retorna o código HTTP `403 Forbidden`.
-
-### 6.1. Matriz inicial de permissões
-
-| Funcionalidade | Administrador | Gestor | Técnico |
-|---|---|---|---|
-| Consultar equipamentos | Permitido | Permitido | Permitido |
-| Cadastrar equipamentos | Permitido | Restrito | Restrito |
-| Registrar pendências | Permitido | Permitido | Permitido |
-| Movimentar equipamentos | Permitido | Restrito | Permitido |
-| Visualizar indicadores | Permitido | Permitido | Permitido |
-| Gerenciar usuários | Permitido | Restrito | Restrito |
-
-A matriz representa as permissões planejadas para os módulos do sistema. Sua aplicação integral ocorrerá conforme cada funcionalidade for desenvolvida.
-
-## 7. Interfaces desenvolvidas
-
-Foram criadas três views Blade.
-
-### 7.1. Layout principal
-
-**Arquivo:** `resources/views/layouts/app.blade.php`
-
-Responsável por padronizar a apresentação visual das páginas, incluindo:
-
-- Estrutura HTML.
-- Estilos CSS.
-- Barra superior de navegação.
-- Identificação do usuário autenticado.
-- Identificação do perfil de acesso.
-- Botão de logout.
-
-### 7.2. Interface de login
-
-**Arquivo:** `resources/views/auth/login.blade.php`
-
-Contempla:
-
-- Identificação visual do SGR-M.
-- Formulário de autenticação.
-- Campos de e-mail e senha.
-- Proteção CSRF.
-- Mensagens de validação.
-- Layout adaptável a diferentes tamanhos de tela.
-
-### 7.3. Dashboard inicial
-
-**Arquivo:** `resources/views/dashboard.blade.php`
-
-Disponibiliza uma página inicial com a identificação do usuário autenticado e a apresentação dos módulos funcionais planejados.
-
-Nesta etapa, os cards possuem caráter informativo, não representando ainda indicadores operacionais reais.
-
-## 8. Dados de teste
-
-Foi desenvolvido o seeder `UserTestSeeder`, destinado à criação de usuários fictícios para o ambiente de desenvolvimento.
-
-Os perfis utilizados nos testes foram:
-
-| Usuário | Perfil |
+| Método ou recurso | Explicação |
 |---|---|
-| Administrador Teste | Administrador |
-| Gestor Teste | Gestor |
-| Técnico Teste | Técnico |
+| `showLoginForm()` | Retorna a interface de login. |
+| `login(Request)` | Valida entradas, tenta autenticar e redireciona após sucesso. |
+| `Auth::attempt()` | Compara credenciais informadas com os dados protegidos pelo sistema de autenticação. |
+| `session()->regenerate()` | Renova a identificação da sessão após autenticação. |
+| `logout(Request)` | Encerra autenticação, invalida sessão e renova token CSRF. |
+| `VerificarPerfil::handle()` | Inspeciona o usuário autenticado e verifica se o papel é autorizado para a rota. |
+| `isAdministrador()`, `isGestor()`, `isTecnico()` | Identificam o papel por comparação exata com as constantes do Model. |
+| `temPerfil(string ...$perfis)` | Retorna verdadeiro quando o perfil atual está entre os permitidos. |
+| `middleware('guest')` | Restringe a tela de login a visitantes. |
+| `middleware('auth')` | Exige usuário autenticado para a rota. |
+| `throttle:5,1` | Limita tentativas da rota de login (cinco por minuto, na configuração adotada). |
+| `Hash::make()` | Gera hash para senhas das contas fictícias de teste. |
 
-O seeder foi configurado para impedir sua execução em ambiente de produção e utilizar uma senha de teste definida localmente.
+**Fluxo resumido:** usuário acessa `/login` → envia e-mail e senha por POST → `LoginController` valida credenciais → `Auth::attempt()` autentica → sessão é regenerada → redirecionamento ao dashboard. Uma rota funcional pode ainda exigir `perfil:administrador`.
 
-Os usuários fictícios não representam contas reais de funcionários.
+## 5. Procedimento de execução no Laragon
 
-## 9. Testes realizados
+Verificar configurações do banco no `.env` e executar, **se ainda houver migrations pendentes**:
 
-Os testes foram executados manualmente no ambiente local, utilizando o navegador e os recursos do Laravel.
+```bash
+php artisan migrate:status
+php artisan migrate
+php artisan route:list
+```
 
-| Teste | Resultado |
-|---|---|
-| Verificação da migration | Aprovado |
-| Identificação dos perfis pelo Model User | Aprovado |
-| Registro das rotas | Aprovado |
-| Exibição do formulário de login | Aprovado |
-| Login com credenciais válidas | Aprovado |
-| Login com credenciais inválidas | Aprovado |
-| Redirecionamento ao dashboard | Aprovado |
-| Logout | Aprovado |
-| Restrição de acesso a rotas protegidas | Aprovado |
-| Autorização do administrador | Aprovado |
-| Autorização do gestor | Aprovado |
-| Autorização do técnico | Aprovado |
-| Bloqueio de perfis não autorizados | Aprovado |
+Para criar contas fictícias **apenas em desenvolvimento**, configurar `SGRM_TEST_PASSWORD` no `.env` com uma senha de pelo menos 12 caracteres e executar:
 
-Os resultados demonstraram o funcionamento esperado das principais operações de autenticação e autorização.
+```bash
+php artisan config:clear
+php artisan db:seed --class=UserTestSeeder
+```
 
-As rotas temporárias utilizadas para testar os perfis foram removidas após a validação.
+**Observação importante:** o `UserTestSeeder` cria **gestor** e **técnico**, não cria administrador. O administrador dos testes originais foi cadastrado manualmente no ambiente local. `firstOrCreate()` não altera a senha de uma conta já existente. Não publicar senhas, capturas de credenciais ou `.env`.
 
-## 10. Limitações e funcionalidades pendentes
+## 6. Verificação de rotas e usuários
 
-A implementação estabelece a infraestrutura inicial de segurança da aplicação, mas ainda apresenta funcionalidades pendentes.
+```bash
+php artisan route:list
+php artisan tinker
+```
 
-Entre elas:
+Dentro do Tinker, consultar usuários **sem exibir senhas**:
 
-- Interface administrativa de cadastro e gerenciamento de usuários.
-- Recuperação de senha.
-- Testes automatizados de autenticação e autorização.
-- Implementação das permissões nas rotas dos módulos funcionais.
-- Registro de auditoria das operações.
-- Revisão de segurança antes de eventual disponibilização em ambiente de produção.
+```php
+App\Models\User::select('id', 'name', 'email', 'perfil')->get();
+App\Models\User::where('perfil', 'administrador')->exists();
+```
 
-Os testes automatizados foram adiados por decisão de planejamento, considerando o estágio atual do projeto acadêmico.
+Conferir no navegador: redirecionamento da página inicial, acesso ao login, entrada com credenciais válidas/inválidas, dashboard, logout e resposta 403 para rotas incompatíveis com o perfil.
 
-A autenticação implementada não representa, isoladamente, uma validação completa de segurança da aplicação.
+## 7. Testes, evidências e limitações
 
-## 11. Próxima etapa de desenvolvimento
+**Testes manuais da Entrega 02:** o relatório original registra sucesso na migration, métodos de identificação de perfil no Tinker, rotas, login válido/inválido, dashboard, logout e restrição de acesso para os três papéis, incluindo HTTP 403. As rotas temporárias de verificação foram removidas depois dos testes.
 
-A próxima entrega contemplará a implementação do módulo de cadastro e consulta de equipamentos.
+**Evolução posterior:** a Entrega 03 adicionou testes automatizados de permissões aplicadas a frotas e trens e testes de redirecionamento da rota inicial. Eles complementam, mas **não substituem retroativamente**, as evidências manuais da Entrega 02.
 
-Serão desenvolvidas interfaces e operações para:
+**Pendências:** recuperação de senha pela interface, gestão administrativa de usuários, auditoria das operações, testes automatizados específicos de todos os cenários de autenticação e revisão de segurança antes de eventual produção. Nenhum resultado de teste manual comprova, sozinho, segurança completa.
 
-- Cadastro e consulta de frotas.
-- Cadastro e consulta de trens.
-- Cadastro e consulta de carros.
-- Identificação dos eixos.
-- Cadastro de rodeiros.
-- Cadastro de motores.
-- Consulta de equipamentos por número de série.
-- Consulta hierárquica por frota, trem, carro e eixo.
+## 8. Conceitos acadêmicos aplicados e pontos para apresentação
 
-O módulo utilizará a modelagem relacional implementada na Entrega 01 e a autenticação desenvolvida nesta entrega.
+- **Autenticação e autorização:** identidade e permissão são preocupações distintas.
+- **RBAC:** autorização baseada em papéis de usuário.
+- **Middleware:** componente transversal que protege rotas antes do controller.
+- **Sessões e CSRF:** mecanismos para proteger o fluxo de autenticação e formulários.
+- **Hash de senhas:** proteção de credenciais armazenadas.
+- **MVC e reúso:** controlador, Model e views com layout compartilhado.
+- **Testes positivos e negativos:** login autorizado, negação de acesso e verificação de status HTTP.
 
-As operações de cadastro e alteração deverão respeitar as permissões dos usuários.
-
-## 12. Conclusão
-
-A Entrega 02 do SGR-M estabeleceu o mecanismo inicial de autenticação e controle de acesso da aplicação.
-
-A implementação integrou recursos nativos do Laravel, interfaces Blade, autenticação por sessão e middleware personalizado para autorização baseada em perfis.
-
-Os testes manuais realizados demonstraram o comportamento esperado para os cenários avaliados, incluindo autenticação, encerramento de sessão, autorização e bloqueio de acessos indevidos.
-
-Com esta entrega, o SGR-M passa a possuir uma base funcional para proteger os próximos módulos e estruturar as permissões de acordo com as responsabilidades dos usuários.
-
-A próxima fase concentrará os esforços na implementação das funcionalidades de cadastro e consulta dos equipamentos ferroviários.
+**Resumo para apresentar:** “A Entrega 02 implementou autenticação por sessão e três perfis de acesso. O middleware passou a verificar permissões no servidor, preparando a proteção dos módulos seguintes.”
