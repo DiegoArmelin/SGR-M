@@ -31,7 +31,7 @@
 
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;text-align:left">
         <thead><tr style="border-bottom:2px solid #cbd5e1">
-            <th style="padding:10px">Posição de origem</th><th>Equipamento / série</th><th>Descrição</th><th>Prioridade</th><th>Situação</th><th>Registro</th><th>Ações</th>
+            <th style="padding:10px">Posição de origem</th><th>Equipamento / série</th><th>Motivo / observações</th><th>Prioridade</th><th>Situação</th><th>Registro</th><th>Ações</th>
         </tr></thead>
         <tbody>
         @forelse($pendencias as $pendencia)
@@ -53,7 +53,13 @@
                     @endif
                 </td>
                 <td><strong>{{ $tipo }}</strong><div>{{ $serie }}</div></td>
-                <td>{{ $pendencia->descricao }}</td>
+                <td>
+                    {{-- Para cadastros antigos, o texto original permanece disponível. --}}
+                    <strong>{{ $pendencia->motivoRetirada?->descricao ?? $pendencia->descricao }}</strong>
+                    @if($pendencia->observacoes)
+                        <div style="margin-top:6px;font-size:13px;color:#475569">{{ $pendencia->observacoes }}</div>
+                    @endif
+                </td>
                 <td>{{ $prioridades[$pendencia->prioridade] ?? $pendencia->prioridade }}</td>
                 <td>{{ $pendencia->situacao === 'aberta' ? 'Aberta' : 'Resolvida' }}</td>
                 <td>{{ $pendencia->created_at?->format('d/m/Y') }}<div style="font-size:12px;color:#64748b">{{ $pendencia->autor?->name }}</div></td>
