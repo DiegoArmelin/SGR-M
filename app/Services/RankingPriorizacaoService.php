@@ -2,173 +2,176 @@
 
 namespace App\Services;
 
-use App\Models\Eixo;
-use App\Models\Frota;
-use App\Models\PendenciaEquipamento;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
- * Consolida ocorrências abertas e condições dos equipamentos instalados.
+ * Monta três consultas independentes da posição instalada.
  *
- * Regra de precedência: crítica (1), alta (2), média (3), baixa (4),
- * periodicidade >= 100% (5), menor diâmetro < 745 mm (6).
+ * Pendências: criticidade da ocorrência, sem incluir peças já retiradas.
+ * Diâmetros: menor leitura LR/LO < 745 mm, ordenada do menor para o maior.
+ * Periodicidade: percentual >= 100%, ordenado do maior para o menor.
  *
- * A maior criticidade define a posição do item na lista; outras condições
- * ficam registradas como alertas adicionais, sem duplicar o equipamento.
+ * A visão de motores possui somente pendências: motor não tem as medições
+ * de diâmetro nem periodicidade no modelo atual.
  */
 class RankingPriorizacaoService
 {
-    private const ORDEM_PENDENCIAS = [
-        'critica' => 1, 'alta' => 2, 'media' => 3, 'baixa' => 4,
-    ];
+    private const LIMITE = 10;
 
     /**
-     * @return array{registros: LengthAwarePaginator, total: int, por_nivel: array}
+     * @param array<string, mixed> $filtros
+     * @return array<string, mixed>
      */
-    public function consultar(?string $frotaCodigo, ?string $tipo, int $pagina = 1): array
+    public function consultar(string $tipo, array $filtros): array
     {
-        // Somente posições ativas: a instalação encerrada não produz alertas.
-        // Eager loading das duas classes evita consultas SQL repetidas por eixo.
-        $eixos = Eixo::query()
-            ->whereHas('carro.trem.frota', function ($query) use ($frotaCodigo) {
-                if ($frotaCodigo) {
-                    $query->where('codigo', $frotaCodigo);
-                }
-            })
-            ->with([
-                'carro.trem.frota',
-                'instalacoesRodeiros' => fn ($q) => $q
-                    ->whereNull('data_retirada')->with('rodeiro'),
-                'instalacoesMotores' => fn ($q) => $q
-                    ->whereNull('data_retirada')->with('motor'),
-            ])
-            ->get();
+        $pendencias = $this->consultaPendencias($tipo, $filtros);
 
-        $rodeiroIds = $eixos->flatMap(
-            fn ($eixo) => $eixo->instalacoesRodeiros->pluck('rodeiro_id')
-        )->unique()->values()->all();
-        $motorIds = $eixos->flatMap(
-            fn ($eixo) => $eixo->instalacoesMotores->pluck('motor_id')
-        )->unique()->values()->all();
-
-        // Pendências sem vínculo com a instalação atual não são priorizadas.
-        $pendencias = PendenciaEquipamento::query()
-            ->where('situacao', 'aberta')
-            ->where(function ($q) use ($rodeiroIds, $motorIds) {
-                $q->whereIn('rodeiro_id', $rodeiroIds)
-                  ->orWhereIn('motor_id', $motorIds);
-            })
-            ->with('motivoRetirada')
-            ->get()
-            ->groupBy(fn ($p) => $p->eixo_id . ':'
-                . ($p->rodeiro_id ? 'rodeiro:' . $p->rodeiro_id : 'motor:' . $p->motor_id));
-
-        $itens = collect();
-
-        foreach ($eixos as $eixo) {
-            foreach (['rodeiro', 'motor'] as $classe) {
-                if ($tipo && $tipo !== $classe) {
-                    continue;
-                }
-
-                $instalacao = $classe === 'rodeiro'
-                    ? $eixo->instalacoesRodeiros->first()
-                    : $eixo->instalacoesMotores->first();
-                $equipamento = $instalacao?->{$classe};
-
-                if (!$equipamento) {
-                    continue;
-                }
-
-                $vinculadas = $pendencias->get(
-                    $eixo->id . ':' . $classe . ':' . $equipamento->id,
-                    collect()
-                );
-
-                $nivel = 99;
-                $alertas = [];
-
-                foreach ($vinculadas as $pendencia) {
-                    $nivel = min($nivel, self::ORDEM_PENDENCIAS[$pendencia->prioridade] ?? 99);
-                    $alertas[] = 'Pendência ' . $pendencia->prioridade
-                        . ': ' . ($pendencia->motivoRetirada?->descricao ?? $pendencia->descricao);
-                }
-
-                $periodicidade = null;
-                $menorDiametro = null;
-
-                if ($classe === 'rodeiro') {
-                    $periodicidade = $equipamento->periodicidade !== null
-                        ? (float) $equipamento->periodicidade : null;
-                    $menorDiametro = $equipamento->menor_diametro;
-
-                    // Condições não criam uma pendência formal; são alertas.
-                    if ($periodicidade !== null && $periodicidade >= 100) {
-                        $nivel = min($nivel, 5);
-                        $alertas[] = 'Periodicidade atingiu ' . number_format($periodicidade, 2, ',', '.') . '%';
-                    }
-
-                    if ($menorDiametro !== null && $menorDiametro < 745) {
-                        $nivel = min($nivel, 6);
-                        $alertas[] = 'Menor diâmetro: ' . number_format($menorDiametro, 2, ',', '.') . ' mm';
-                    }
-                }
-
-                if ($nivel === 99) {
-                    continue; // Sem pendência ou alerta de condição.
-                }
-
-                $itens->push([
-                    'nivel' => $nivel,
-                    'frota' => $eixo->carro->trem->frota->codigo,
-                    'frota_id' => $eixo->carro->trem->frota_id,
-                    'trem_id' => $eixo->carro->trem_id,
-                    'carro_id' => $eixo->carro_id,
-                    'trem' => $eixo->carro->trem->codigo,
-                    'carro' => $eixo->carro->codigo,
-                    'posicao' => $eixo->numero,
-                    'eixo_id' => $eixo->id,
-                    'tipo' => $classe,
-                    'numero_serie' => $equipamento->numero_serie,
-                    'periodicidade' => $periodicidade,
-                    'menor_diametro' => $menorDiametro,
-                    'pendencias' => $vinculadas->count(),
-                    'alertas' => $alertas,
-                ]);
-            }
-        }
-
-        // Prioridade primeiro; entre rodeiros com a mesma prioridade,
-        // maior periodicidade, menor diâmetro e localização estável.
-        $ordenados = $itens->sort(function (array $a, array $b): int {
-            return ($a['nivel'] <=> $b['nivel'])
-                ?: (($b['periodicidade'] ?? -1) <=> ($a['periodicidade'] ?? -1))
-                ?: (($a['menor_diametro'] ?? INF) <=> ($b['menor_diametro'] ?? INF))
-                ?: strcmp(
-                    $a['trem'] . $a['carro'] . str_pad((string) $a['posicao'], 2, '0', STR_PAD_LEFT) . $a['tipo'],
-                    $b['trem'] . $b['carro'] . str_pad((string) $b['posicao'], 2, '0', STR_PAD_LEFT) . $b['tipo']
-                );
-        })->values();
-
-        $porNivel = [];
-        foreach (range(1, 6) as $nivel) {
-            $porNivel[$nivel] = $ordenados->where('nivel', $nivel)->count();
-        }
-
-        $pagina = max(1, $pagina);
-        $paginado = new LengthAwarePaginator(
-            $ordenados->forPage($pagina, 30)->values(),
-            $ordenados->count(),
-            30,
-            $pagina,
-            ['path' => request()->url(), 'query' => request()->query()]
-        );
-
-        return [
-            'registros' => $paginado,
-            'total' => $ordenados->count(),
-            'por_nivel' => $porNivel,
+        $resultado = [
+            'pendencias' => $pendencias->limit(self::LIMITE)->get(),
+            'totalPendencias' => (clone $pendencias)->reorder()->count(),
+            'diametros' => collect(),
+            'totalDiametros' => 0,
+            'diametrosCriticos' => 0,
+            'periodicidades' => collect(),
+            'totalPeriodicidades' => 0,
         ];
+
+        if ($tipo === 'rodeiro') {
+            $diametros = $this->consultaDiametros($filtros);
+
+            // Os cards de diâmetro respeitam os filtros deste bloco e
+            // contabilizam todos os resultados, não apenas os primeiros 10.
+            $resultado['totalDiametros'] = (clone $diametros)->count();
+            $resultado['diametrosCriticos'] = (clone $diametros)
+                ->whereRaw($this->menorDiametroSql() . ' <= ?', [742])
+                ->count();
+            $resultado['diametros'] = $diametros
+                ->orderByRaw($this->menorDiametroSql() . ' ASC')
+                ->orderBy('t.codigo')->orderBy('c.codigo')->orderBy('e.numero')
+                ->limit(self::LIMITE)->get();
+
+            $periodicidades = $this->consultaPeriodicidades($filtros);
+            $resultado['totalPeriodicidades'] = (clone $periodicidades)->count();
+            $resultado['periodicidades'] = $periodicidades
+                ->orderByDesc('r.periodicidade')
+                ->orderBy('t.codigo')->orderBy('c.codigo')->orderBy('e.numero')
+                ->limit(self::LIMITE)->get();
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * Parte comum: apenas equipamentos vinculados a uma instalação ativa.
+     * Os joins restringem a frota/trem/carro/eixo à posição correta.
+     */
+    private function instalacoes(string $tipo): Builder
+    {
+        $rodeiro = $tipo === 'rodeiro';
+        $tabelaInstalacoes = $rodeiro ? 'instalacoes_rodeiros' : 'instalacoes_motores';
+        $tabelaEquipamentos = $rodeiro ? 'rodeiros' : 'motores';
+        $chave = $rodeiro ? 'rodeiro_id' : 'motor_id';
+
+        return DB::table($tabelaInstalacoes . ' as i')
+            ->join($tabelaEquipamentos . ' as r', 'r.id', '=', 'i.' . $chave)
+            ->join('eixos as e', 'e.id', '=', 'i.eixo_id')
+            ->join('carros as c', 'c.id', '=', 'e.carro_id')
+            ->join('trens as t', 't.id', '=', 'c.trem_id')
+            ->join('frotas as f', 'f.id', '=', 't.frota_id')
+            ->whereNull('i.data_retirada');
+    }
+
+    /**
+     * Cada bloco tem seus próprios filtros. Campos de outros blocos são
+     * intencionalmente ignorados, impedindo interferência entre tabelas.
+     */
+    private function filtrarLocalizacao(Builder $consulta, array $filtros, string $prefixo): Builder
+    {
+        if (!empty($filtros[$prefixo . '_trem'])) {
+            $consulta->where('t.codigo', $filtros[$prefixo . '_trem']);
+        }
+        if (!empty($filtros[$prefixo . '_carro'])) {
+            $consulta->where('c.codigo', $filtros[$prefixo . '_carro']);
+        }
+
+        return $consulta;
+    }
+
+    /** Pendências abertas com prioridade crítica, alta, média e baixa. */
+    private function consultaPendencias(string $tipo, array $filtros): Builder
+    {
+        $chave = $tipo === 'rodeiro' ? 'rodeiro_id' : 'motor_id';
+
+        $consulta = $this->instalacoes($tipo)
+            ->join('pendencias_equipamentos as p', function ($join) use ($chave) {
+                $join->on('p.eixo_id', '=', 'e.id')
+                    ->on('p.' . $chave, '=', 'r.id');
+            })
+            ->leftJoin('motivos_retirada as mr', 'mr.id', '=', 'p.motivo_retirada_id')
+            ->where('p.situacao', 'aberta');
+
+        $this->filtrarLocalizacao($consulta, $filtros, 'p');
+
+        if (!empty($filtros['p_prioridade'])) {
+            $consulta->where('p.prioridade', $filtros['p_prioridade']);
+        }
+
+        return $consulta
+            ->select([
+                'p.id as pendencia_id', 'p.prioridade', 'p.descricao',
+                'p.observacoes', 'mr.descricao as motivo_catalogo',
+                'f.codigo as frota', 't.codigo as trem', 'c.codigo as carro',
+                'e.numero as posicao', 'e.id as eixo_id', 'r.numero_serie',
+            ])
+            ->orderByRaw(
+                "CASE p.prioridade WHEN 'critica' THEN 1 WHEN 'alta' THEN 2 "
+                . "WHEN 'media' THEN 3 WHEN 'baixa' THEN 4 ELSE 5 END"
+            )
+            ->orderBy('t.codigo')->orderBy('c.codigo')->orderBy('e.numero')
+            ->orderBy('p.id');
+    }
+
+    /**
+     * Menor medição sem erro quando LR ou LO estiver ausente.
+     * A mesma expressão é usada para filtro, ordenação e contagem crítica.
+     */
+    private function menorDiametroSql(): string
+    {
+        return 'CASE '
+            . 'WHEN r.diametro_lr IS NULL THEN r.diametro_lo '
+            . 'WHEN r.diametro_lo IS NULL THEN r.diametro_lr '
+            . 'WHEN r.diametro_lr <= r.diametro_lo THEN r.diametro_lr '
+            . 'ELSE r.diametro_lo END';
+    }
+
+    private function consultaDiametros(array $filtros): Builder
+    {
+        $consulta = $this->instalacoes('rodeiro');
+        $this->filtrarLocalizacao($consulta, $filtros, 'd');
+
+        return $consulta
+            ->whereRaw($this->menorDiametroSql() . ' < ?', [745])
+            ->select([
+                'f.codigo as frota', 't.codigo as trem', 'c.codigo as carro',
+                'e.numero as posicao', 'e.id as eixo_id', 'r.numero_serie',
+                'r.diametro_lr', 'r.diametro_lo',
+            ])
+            ->selectRaw($this->menorDiametroSql() . ' as menor_diametro');
+    }
+
+    private function consultaPeriodicidades(array $filtros): Builder
+    {
+        $consulta = $this->instalacoes('rodeiro');
+        $this->filtrarLocalizacao($consulta, $filtros, 'r');
+
+        return $consulta
+            ->where('r.periodicidade', '>=', 100)
+            ->select([
+                'f.codigo as frota', 't.codigo as trem', 'c.codigo as carro',
+                'e.numero as posicao', 'e.id as eixo_id',
+                'r.numero_serie', 'r.periodicidade',
+            ]);
     }
 }
