@@ -15,6 +15,7 @@ class InstalacaoRodeiro extends Model
         'data_instalacao',
         'data_retirada',
         'motivo_retirada',
+        'motivo_retirada_id',
         'observacoes',
     ];
 
@@ -24,6 +25,12 @@ class InstalacaoRodeiro extends Model
             'data_instalacao' => 'date',
             'data_retirada' => 'date',
         ];
+    }
+
+    /** Motivo categorizado da retirada, quando existente. */
+    public function motivoRetirada(): BelongsTo
+    {
+        return $this->belongsTo(MotivoRetirada::class, 'motivo_retirada_id');
     }
 
     public function eixo(): BelongsTo
