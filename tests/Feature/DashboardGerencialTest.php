@@ -135,8 +135,7 @@ class DashboardGerencialTest extends TestCase
             $d['substituicoes']['rodeiro'] === 1 &&
             $d['substituicoes']['motor'] === 0 &&
             $d['instalados']['rodeiro'] === 0 &&
-            $d['instalados']['motor'] === 0 &&
-            $d['totaisFrota']->count() === 1
+            $d['instalados']['motor'] === 0
         );
     }
 
@@ -151,4 +150,40 @@ class DashboardGerencialTest extends TestCase
         $this->get(route('dashboard.gerencial', ['frota' => 'NAO_EXISTE']))
             ->assertSessionHasErrors('frota');
     }
+
+    /** A visão geral exibe um único parque e prioriza as pendências graves. */
+    public function test_visao_geral_remove_trens_e_mostra_card_30_dias(): void
+    {
+        $local = $this->instalar('I', 'I01');
+        $autor = $this->gestor();
+
+        PendenciaEquipamento::create([
+            'eixo_id' => $local['eixo']->id,
+            'rodeiro_id' => $local['rodeiro']->id,
+            'descricao' => 'Pendência encerrada',
+            'prioridade' => 'alta',
+            'situacao' => 'resolvida',
+            'registrado_por' => $autor->id,
+            'resolvida_em' => now()->subDays(5),
+        ]);
+        PendenciaEquipamento::create([
+            'eixo_id' => $local['eixo']->id,
+            'rodeiro_id' => $local['rodeiro']->id,
+            'descricao' => 'Pendência antiga',
+            'prioridade' => 'alta',
+            'situacao' => 'resolvida',
+            'registrado_por' => $autor->id,
+            'resolvida_em' => now()->subDays(40),
+        ]);
+
+        $this->actingAs($autor)->get(route('dashboard.gerencial'))
+            ->assertOk()
+            ->assertSee('Total de equipamentos instalados')
+            ->assertSee('Pendências encerradas nos últimos 30 dias')
+            ->assertSee('pendências altas')
+            ->assertDontSee('Trens cadastrados por frota')
+            ->assertDontSee('sem leitura de periodicidade')
+            ->assertViewHas('dados', fn ($d) => $d['encerradas30'] === 1);
+    }
+
 }
