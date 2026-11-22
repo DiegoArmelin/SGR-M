@@ -1,6 +1,7 @@
 # SGR-M — Carga inicial de frotas, trens, carros e eixos
 
 **Projeto:** SGR-M — Grupo 10 — Fatec São Paulo  
+**Disciplina:** Laboratório de Engenharia de Software  
 **Entrega:** 03 — Cadastro e Consulta de Equipamentos  
 **Natureza:** dados exclusivamente fictícios para ambiente acadêmico  
 **Implementação:** `database/seeders/EstruturaFrotasSeeder.php`  
@@ -10,7 +11,7 @@
 
 Popular a hierarquia Frota → Trem → Carro → Eixo, utilizando os Models e migrations existentes. A rotina cadastra posições de eixo, não instala motores ou rodeiros; essas movimentações terão implementação específica posteriormente.
 
-## 2. Regras de geração
+## 2. Regras de negócio e geração
 
 | Frota | Intervalo inclusivo de trens | Quantidade de trens | Carros por trem | Eixos por carro | Total de carros | Total de eixos |
 |---|---|---:|---:|---:|---:|---:|
@@ -34,7 +35,7 @@ O código de cada carro corresponde ao código do trem concatenado à posição 
 
 **Não foram criadas migrations novas ou alterados os dados operacionais existentes.** O `DatabaseSeeder.php` não foi alterado: a carga deve ser disparada explicitamente, evitando execução involuntária.
 
-## 4. Explicação dos principais recursos de programação
+## 4. Métodos e principais recursos de programação
 
 - **`run()`:** método obrigatório do Seeder, chamado por `artisan db:seed`.
 - **`app()->environment('production')`:** proteção contra execução intencional em ambiente de produção.
@@ -69,15 +70,17 @@ App\Models\Eixo::whereHas('carro', fn ($q) => $q->where('codigo', 'I011'))->orde
 
 Se o banco estiver vazio antes da carga, a contagem global será 3 frotas, 73 trens, 438 carros e 1.752 eixos. Caso existam registros anteriores, os totais globais poderão ser maiores. Registros existentes não são excluídos ou sobrescritos.
 
-## 7. Testes
+## 7. Testes, evidências e limitações
 
 `test_seeder_cria_frotas_trens_carros_e_eixos_corretamente`: verifica a criação dos registros e a numeração hierárquica.
 
 `test_seeder_pode_ser_executado_novamente_sem_duplicar`: executa duas vezes e verifica que os totais se mantêm.
 
-**Estado:** arquivos gerados no GitHub, mas execução dos testes e importação no banco local ainda não confirmadas. Registrar o resultado após executar o procedimento acima.
+**Evidência informada pelo desenvolvedor:** os testes desta carga foram executados com sucesso no ambiente local. Não foi disponibilizada a saída detalhada do comando nem a contagem final da base após o seeder, portanto a execução do carregamento e os totais efetivos do MySQL não são aqui tratados como comprovados.
 
-## 8. Conceitos acadêmicos aplicados
+**Limitações:** a rotina não cria instalações de rodeiros/motores, não substitui o CRUD visual de carros/eixos e não foi validada para produção. Ela mantém registros preexistentes e interrompe a carga quando encontra vínculos incompatíveis.
+
+## 8. Conceitos acadêmicos aplicados e pontos para apresentação
 
 - Modelagem relacional e integridade referencial.
 - Eloquent ORM e associações entre entidades.
@@ -86,3 +89,5 @@ Se o banco estiver vazio antes da carga, a contagem global será 3 frotas, 73 tr
 - Transações ACID (atomicidade na carga).
 - Testes automatizados de integração com banco de dados.
 - Desenvolvimento incremental e controle de versões.
+
+**Resumo para apresentar:** “A carga inicial automatizou a criação de três frotas fictícias, 73 trens, 438 carros e 1.752 posições de eixo planejadas, usando transações, relações Eloquent e execução idempotente, com testes específicos de estrutura e repetição.”
