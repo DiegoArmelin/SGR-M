@@ -104,7 +104,7 @@ class RankingPriorizacaoTest extends TestCase
             ->assertSee('MT-I')
             ->assertDontSee('RD-I')
             ->assertDontSee('Diâmetros dos rodeiros')
-            ->assertDontSee('Periodicidade dos rodeiros')
+            ->assertSee('Periodicidade dos motores')
             ->assertViewHas('totalPendencias', 1);
     }
 
@@ -252,4 +252,64 @@ class RankingPriorizacaoTest extends TestCase
             ->assertViewHas('totalPeriodicidades', 0)
             ->assertViewHas('totalPendencias', 0);
     }
+
+    /** Os cards de pendência mostram totais por criticidade na localização filtrada. */
+    public function test_cards_de_pendencias_por_criticidade(): void
+    {
+        $critico = $this->instalar('I', 'I01', 'I011', 1, 'RD-C1');
+        $alto = $this->instalar('I', 'I01', 'I011', 2, 'RD-A1');
+        $medio = $this->instalar('J', 'J26', 'J261', 1, 'RD-M1');
+        $this->criarPendencia($critico, 'critica');
+        $this->criarPendencia($alto, 'alta');
+        $this->criarPendencia($medio, 'media');
+
+        $this->actingAs(User::factory()->create(['perfil' => 'gestor']))
+            ->get(route('ranking.index', ['p_frota' => 'I']))
+            ->assertOk()
+            ->assertViewHas('totalPendencias', 2)
+            ->assertViewHas('pendenciasPorPrioridade', fn ($v) =>
+                $v['critica'] === 1 && $v['alta'] === 1
+                && $v['media'] === 0 && $v['baixa'] === 0);
+    }
+
+    /** Motores com periodicidade são classificados pelas mesmas faixas. */
+    public function test_periodicidade_de_motores_e_cards_100_105_110(): void
+    {
+        $a = $this->instalar('I', 'I01', 'I011', 1, 'MT-100', 'motor');
+        $b = $this->instalar('I', 'I01', 'I011', 2, 'MT-105', 'motor');
+        $c = $this->instalar('I', 'I01', 'I011', 3, 'MT-110', 'motor');
+        $a['equipamento']->update(['periodicidade' => 100]);
+        $b['equipamento']->update(['periodicidade' => 105]);
+        $c['equipamento']->update(['periodicidade' => 110]);
+
+        $this->actingAs(User::factory()->create(['perfil' => 'gestor']))
+            ->get(route('ranking.index', ['tipo' => 'motor']))
+            ->assertOk()
+            ->assertSee('Periodicidade dos motores')
+            ->assertSeeInOrder(['MT-110', 'MT-105', 'MT-100'])
+            ->assertViewHas('totalPeriodicidades', 3)
+            ->assertViewHas('periodicidades105', 2)
+            ->assertViewHas('periodicidades110', 1);
+    }
+
+    /** Cada tabela aplica frota independentemente das demais. */
+    public function test_filtros_de_frota_independentes_nas_tres_tabelas(): void
+    {
+        $i = $this->instalar('I', 'I01', 'I011', 1, 'RD-FI', 'rodeiro', [
+            'diametro_lr' => 740, 'periodicidade' => 105,
+        ]);
+        $j = $this->instalar('J', 'J26', 'J261', 1, 'RD-FJ', 'rodeiro', [
+            'diametro_lr' => 741, 'periodicidade' => 110,
+        ]);
+        $this->criarPendencia($i, 'critica');
+        $this->criarPendencia($j, 'alta');
+
+        $this->actingAs(User::factory()->create(['perfil' => 'gestor']))
+            ->get(route('ranking.index', ['d_frota' => 'I', 'r_frota' => 'J', 'p_frota' => 'I']))
+            ->assertOk()
+            ->assertViewHas('totalPendencias', 1)
+            ->assertViewHas('totalDiametros', 1)
+            ->assertViewHas('totalPeriodicidades', 1);
+    }
+
 }
