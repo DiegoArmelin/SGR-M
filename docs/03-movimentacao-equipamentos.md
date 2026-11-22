@@ -18,7 +18,7 @@ Implementar a substituição de um rodeiro ou motor instalado em um eixo por out
 | Quem consulta o histórico | Administrador, gestor e técnico |
 | Equipamento de saída | Deve ser o equipamento atualmente instalado no eixo |
 | Equipamento de entrada | Deve estar cadastrado, com status `estoque` e sem instalação ativa |
-| Motivo de retirada | Troca programada, Diâmetro condenado, Calo acentuado, Defeito identificado, Outro |
+| Motivo de retirada | Selecionado na tabela `motivos_retirada`, filtrado por tipo de equipamento |
 | Data da movimentação | Não pode ser futura nem anterior à data da instalação atual |
 | Equipamento retirado | Status alterado para `em_manutencao` |
 | Equipamento instalado | Status alterado para `instalado` |
@@ -55,7 +55,7 @@ Não foram necessárias novas tabelas: a implementação utiliza `rodeiros`, `mo
 ### Controller
 
 - **`create(Eixo $eixo, string $tipo)`:** localiza equipamento ativo e mostra formulário de troca.
-- **`store(Request, Eixo, string, SubstituicaoEquipamentoService)`:** valida número de série, data, motivo e observações, chama o serviço e retorna à consulta hierárquica.
+- **`store(Request, Eixo, string, SubstituicaoEquipamentoService)`:** valida número de série, data, ID do motivo e observações, chama o serviço e retorna à consulta hierárquica.
 - **`historico(Eixo $eixo)`:** consulta todos os vínculos de rodeiros e motores do eixo, inclusive os encerrados.
 - **`instalacaoAtual()`:** método auxiliar privado para recuperar o vínculo ativo conforme o tipo.
 
@@ -79,7 +79,7 @@ php artisan test
 2. Selecionar frota, trem e carro, até visualizar os eixos.
 3. Clicar em **Trocar rodeiro** ou **Trocar motor** na posição desejada.
 4. Inserir a série de um sobressalente com status `estoque`.
-5. Escolher data e motivo e confirmar a substituição.
+5. Escolher data e um motivo do catálogo específico do equipamento e confirmar a substituição.
 6. Conferir o novo equipamento na consulta hierárquica.
 7. Abrir o **Histórico** do eixo e confirmar que o equipamento anterior passou a ter data de retirada, preservando sua instalação antiga.
 8. Consultar o equipamento anterior por série e confirmar status `em_manutencao`.
@@ -111,3 +111,7 @@ Os testes definidos em `MovimentacaoEquipamentoTest.php` incluem seis cenários:
 - **Testes Feature:** cenários positivos e negativos, inclusive checagens no banco.
 
 **Resumo para apresentar:** “O módulo de movimentação substitui rodeiros e motores por número de série, verifica a disponibilidade da peça, encerra o vínculo anterior e registra a nova instalação em uma transação, mantendo histórico e status coerentes.”
+
+## 9. Evolução posterior: catálogo de motivos
+
+A lista fixa de motivos da primeira implementação foi substituída por uma tabela única, separada pelo campo `tipo_equipamento`. As tabelas de instalações passaram a guardar `motivo_retirada_id`, mantendo também o texto original por compatibilidade histórica. Consulte [03-motivos-retirada.md](03-motivos-retirada.md) para o detalhamento técnico, os 14 valores catalogados e os testes adicionais.
