@@ -103,7 +103,11 @@
                         <td>{{ $item->diametro_lr !== null ? number_format((float)$item->diametro_lr,2,',','.') : '—' }}</td>
                         <td>{{ $item->diametro_lo !== null ? number_format((float)$item->diametro_lo,2,',','.') : '—' }}</td>
                         <td><strong>{{ number_format((float)$item->menor_diametro,2,',','.') }}</strong></td>
-                        <td class="rank-action"><a href="{{ route('equipamentos.movimentacao.create', ['eixo'=>$item->eixo_id,'tipo'=>'rodeiro']) }}">Consultar substituição</a></td>
+                        <td class="rank-action"><a href="{{ route('equipamentos.historico', ['eixo'=>$item->eixo_id]) }}">Histórico</a>
+                            @if(auth()->user()->temPerfil('administrador','tecnico'))
+                                <div><a href="{{ route('equipamentos.movimentacao.create', ['eixo'=>$item->eixo_id,'tipo'=>'rodeiro']) }}">Substituir</a></div>
+                            @endif
+                        </td>
                     </tr>
                 @empty
                     <tr><td colspan="8">Nenhum rodeiro abaixo de 745 mm com estes filtros.</td></tr>
