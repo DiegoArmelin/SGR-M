@@ -324,6 +324,7 @@ Os relatórios detalhados ficam na pasta [`docs/`](docs/):
 - [Entrega 03 — Carga Inicial de Rodeiros e Motores](docs/03-carga-inicial-equipamentos.md).
 - [Entrega 03 — Consulta Hierárquica](docs/03-consulta-hierarquica.md).
 - [Entrega 03 — Movimentação de Equipamentos](docs/03-movimentacao-equipamentos.md).
+- [Entrega 03 — Catálogo de Motivos de Retirada](docs/03-motivos-retirada.md).
 
 Os documentos descrevem as decisões técnicas, os componentes implementados, os testes manuais e as limitações de cada etapa.
 
