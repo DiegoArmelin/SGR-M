@@ -39,13 +39,13 @@ O sistema procura consolidar informações que auxiliem a rastreabilidade e a id
 
 ## 4. Funcionalidades do sistema
 
-### 4.1. Cadastro e consulta de equipamentos — em desenvolvimento
+### 4.1. Cadastro e consulta de equipamentos — parcialmente implementados
 
-Cadastro de frotas, trens, carros, eixos, rodeiros e motores. Cada equipamento possui número de série único e pode ser acompanhado independentemente da posição de instalação. **A estrutura do banco e os models já foram implementados; as telas de cadastro e consulta ainda estão pendentes.**
+A estrutura e a carga fictícia de frotas, trens, carros, eixos, rodeiros e motores foram implementadas. Há consulta por número de série, consulta hierárquica e CRUD de frotas/trens. Interfaces CRUD específicas de carros, eixos e equipamentos ainda estão pendentes.
 
-### 4.2. Gestão de pendências — planejada
+### 4.2. Gestão de pendências — implementação inicial
 
-Registro e acompanhamento de pendências técnicas classificadas como **crítica, alta, média ou baixa**.
+Registro, consulta, filtragem e resolução de pendências técnicas de rodeiros e motores, classificadas como **crítica, alta, média ou baixa**. O módulo possui testes automatizados, ainda sujeitos à validação no ambiente local.
 
 ### 4.3. Importação de dados CSV — planejada
 
@@ -64,9 +64,9 @@ O ranking seguirá a seguinte ordem de precedência:
 
 Esses limites são parâmetros acadêmicos e **não representam critérios operacionais oficiais**.
 
-### 4.5. Movimentação de equipamentos — parcialmente estruturada
+### 4.5. Movimentação de equipamentos — implementada
 
-A modelagem permite registrar instalações, retiradas e substituições e preservar o histórico. Os **serviços e interfaces de movimentação** ainda serão implementados com validações e transações de banco de dados.
+A aplicação permite substituir rodeiros e motores por número de série, selecionar peças em estoque, registrar motivos de retirada por tipo, atualizar os status e preservar o histórico de instalações em transação.
 
 ### 4.6. Dashboard e indicadores — parcialmente implementado
 
@@ -146,7 +146,8 @@ As restrições de exclusividade de instalações ativas utilizam **colunas gera
 |---|---|---|
 | 01 | Modelagem inicial do banco, models e integridade | Concluída; testes manuais realizados |
 | 02 | Autenticação e controle de acesso por perfis | Implementada; testes manuais aprovados |
-| 03 | Cadastro e consulta de equipamentos | Próxima etapa |
+| 03 | Consultas, cadastro de frotas/trens, cargas iniciais e movimentação | Implementada e validada incrementalmente no Laragon |
+| Atual | Gestão de pendências técnicas | Implementação inicial; testes pendentes |
 | Futuras | Movimentações, pendências, importação CSV, priorização e indicadores | Planejadas |
 
 ### Concluído
@@ -164,14 +165,16 @@ As restrições de exclusividade de instalações ativas utilizam **colunas gera
 
 ### Pendente
 
-- [ ] Interfaces de cadastro e consulta de equipamentos.
-- [ ] Gestão de pendências técnicas.
-- [ ] Serviços transacionais de movimentação.
+- [x] Consulta por série e consulta hierárquica; CRUD de frotas/trens.
+- [ ] CRUD visual de carros, eixos, rodeiros e motores.
+- [x] Implementação inicial de gestão de pendências técnicas (testes locais pendentes).
+- [x] Serviços transacionais de movimentação.
 - [ ] Importação e validação de arquivos CSV.
 - [ ] Ranking de priorização.
 - [ ] Indicadores operacionais do dashboard.
 - [ ] Interface administrativa de gerenciamento de usuários.
-- [ ] Testes automatizados e testes finais de integração.
+- [x] Testes automatizados dos módulos anteriores.
+- [ ] Testes finais de integração de todos os módulos.
 
 **Nota:** a suíte de testes automatizados foi adiada nesta fase. A aprovação dos testes manuais não equivale a uma auditoria de segurança ou a uma validação completa para produção.
 
@@ -325,6 +328,7 @@ Os relatórios detalhados ficam na pasta [`docs/`](docs/):
 - [Entrega 03 — Consulta Hierárquica](docs/03-consulta-hierarquica.md).
 - [Entrega 03 — Movimentação de Equipamentos](docs/03-movimentacao-equipamentos.md).
 - [Entrega 03 — Catálogo de Motivos de Retirada](docs/03-motivos-retirada.md).
+- [Entrega 03 — Gestão de Pendências Técnicas](docs/03-gestao-pendencias.md).
 
 Os documentos descrevem as decisões técnicas, os componentes implementados, os testes manuais e as limitações de cada etapa.
 
