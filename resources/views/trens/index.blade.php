@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Trens — SGR-M')
 @section('content')
+{{-- A listagem aceita filtros GET, preservados durante a paginação. --}}
 <main class="container"><div class="card">
     <h1 class="page-title">Trens</h1>
     <p><a href="{{ route('frotas.index') }}">Consultar frotas</a></p>
@@ -16,6 +17,7 @@
             <input class="form-control" id="codigo" name="codigo" maxlength="20" value="{{ $filtros['codigo'] ?? '' }}"></div>
         <button class="btn-primary" type="submit">Filtrar</button> <a href="{{ route('trens.index') }}">Limpar</a>
     </form>
+    {{-- Apenas administradores visualizam o atalho para cadastro; middleware protege a rota. --}}
     @if(auth()->user()->isAdministrador())<p><a href="{{ route('trens.create') }}">+ Novo trem</a></p>@endif
     <div style="overflow-x:auto;margin-top:20px"><table style="width:100%;border-collapse:collapse">
         <thead><tr><th align="left">Código</th><th align="left">Frota</th><th align="left">Descrição</th><th align="left">Situação</th><th align="left">Carros</th><th align="left">Ações</th></tr></thead>
