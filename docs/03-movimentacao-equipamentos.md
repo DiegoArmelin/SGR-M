@@ -18,6 +18,8 @@ Implementar a substituição de um rodeiro ou motor instalado em um eixo por out
 | Quem consulta o histórico | Administrador, gestor e técnico |
 | Equipamento de saída | Deve ser o equipamento atualmente instalado no eixo |
 | Equipamento de entrada | Deve estar cadastrado, com status `estoque` e sem instalação ativa |
+| Forma de seleção | Lista dos equipamentos em estoque, com opção alternativa de digitação manual |
+| Ambos os campos preenchidos | O número digitado manualmente prevalece sobre a lista |
 | Motivo de retirada | Selecionado na tabela `motivos_retirada`, filtrado por tipo de equipamento |
 | Data da movimentação | Não pode ser futura nem anterior à data da instalação atual |
 | Equipamento retirado | Status alterado para `em_manutencao` |
@@ -38,6 +40,7 @@ Implementar a substituição de um rodeiro ou motor instalado em um eixo por out
 | `resources/views/equipamentos/hierarquica.blade.php` | Atalhos para substituir equipamentos e consultar histórico |
 | `routes/web.php` | Rotas de substituição e histórico protegidas pelos perfis |
 | `tests/Feature/MovimentacaoEquipamentoTest.php` | Testes de troca válida, controle de acesso e falhas sem gravação parcial |
+| `tests/Feature/SelecaoEstoqueMovimentacaoTest.php` | Testes da lista de estoque, entrada manual, precedência e obrigatoriedade |
 
 Não foram necessárias novas tabelas: a implementação utiliza `rodeiros`, `motores`, `instalacoes_rodeiros`, `instalacoes_motores` e `eixos` já existentes.
 
@@ -54,8 +57,8 @@ Não foram necessárias novas tabelas: a implementação utiliza `rodeiros`, `mo
 
 ### Controller
 
-- **`create(Eixo $eixo, string $tipo)`:** localiza equipamento ativo e mostra formulário de troca.
-- **`store(Request, Eixo, string, SubstituicaoEquipamentoService)`:** valida número de série, data, ID do motivo e observações, chama o serviço e retorna à consulta hierárquica.
+- **`create(Eixo $eixo, string $tipo)`:** localiza equipamento ativo, consulta apenas números de série com status `estoque` do tipo selecionado e mostra formulário de troca.
+- **`store(Request, Eixo, string, SubstituicaoEquipamentoService)`:** exige ao menos um dos campos de série (`required_without`), prioriza o número digitado manualmente, valida data/motivo/observações e chama o serviço. O serviço continua verificando o estoque no momento da gravação.
 - **`historico(Eixo $eixo)`:** consulta todos os vínculos de rodeiros e motores do eixo, inclusive os encerrados.
 - **`instalacaoAtual()`:** método auxiliar privado para recuperar o vínculo ativo conforme o tipo.
 
@@ -68,6 +71,7 @@ git status
 git pull origin feature/entrega-03-consulta-equipamentos
 php artisan route:list
 php artisan test --filter=MovimentacaoEquipamentoTest
+php artisan test --filter=SelecaoEstoqueMovimentacaoTest
 php artisan test
 ```
 
@@ -78,7 +82,7 @@ php artisan test
 1. Entrar como técnico ou administrador e abrir `/equipamentos/hierarquica`.
 2. Selecionar frota, trem e carro, até visualizar os eixos.
 3. Clicar em **Trocar rodeiro** ou **Trocar motor** na posição desejada.
-4. Inserir a série de um sobressalente com status `estoque`.
+4. Selecionar uma série disponível na lista ou digitá-la manualmente (se ambos preenchidos, a digitação tem prioridade).
 5. Escolher data e um motivo do catálogo específico do equipamento e confirmar a substituição.
 6. Conferir o novo equipamento na consulta hierárquica.
 7. Abrir o **Histórico** do eixo e confirmar que o equipamento anterior passou a ter data de retirada, preservando sua instalação antiga.
@@ -115,3 +119,7 @@ Os testes definidos em `MovimentacaoEquipamentoTest.php` incluem seis cenários:
 ## 9. Evolução posterior: catálogo de motivos
 
 A lista fixa de motivos da primeira implementação foi substituída por uma tabela única, separada pelo campo `tipo_equipamento`. As tabelas de instalações passaram a guardar `motivo_retirada_id`, mantendo também o texto original por compatibilidade histórica. Consulte [03-motivos-retirada.md](03-motivos-retirada.md) para o detalhamento técnico, os 14 valores catalogados e os testes adicionais.
+
+## 10. Evolução posterior: seleção de estoque assistida
+
+O formulário de substituição agora oferece lista suspensa de séries com status `estoque`, filtradas para rodeiros ou motores. A digitação manual permanece disponível para operações em que o usuário já conhece o número de série. Não houve alteração de tabelas nem de migrations nessa evolução. O teste `SelecaoEstoqueMovimentacaoTest` verifica a filtragem, a substituição via lista, a prioridade da entrada manual e a recusa de envio sem série de entrada. A aprovação ainda depende da execução no Laragon.
