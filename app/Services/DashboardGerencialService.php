@@ -17,13 +17,11 @@ class DashboardGerencialService
     {
         $instalados = [];
         $periodicidade = [];
-        $semLeitura = [];
 
         foreach (['rodeiro', 'motor'] as $tipo) {
             $base = $this->instalacoesAtivas($tipo, $frota);
             $instalados[$tipo] = (clone $base)->count();
             $periodicidade[$tipo] = (clone $base)->where('eq.periodicidade', '>=', 100)->count();
-            $semLeitura[$tipo] = (clone $base)->whereNull('eq.periodicidade')->count();
         }
 
         $rodeiros = $this->instalacoesAtivas('rodeiro', $frota);
@@ -77,18 +75,9 @@ class DashboardGerencialService
             ->when($frota, fn ($q) => $q->where('f.codigo', $frota))
             ->count();
 
-        $totaisFrota = DB::table('frotas as f')
-            ->leftJoin('trens as t', 't.frota_id', '=', 'f.id')
-            ->select('f.codigo')
-            ->selectRaw('COUNT(t.id) as total_trens')
-            ->when($frota, fn ($q) => $q->where('f.codigo', $frota))
-            ->groupBy('f.id', 'f.codigo')
-            ->orderBy('f.codigo')
-            ->get();
-
         return compact(
-            'instalados', 'periodicidade', 'semLeitura', 'diametros',
-            'pendencias', 'substituicoes', 'totaisFrota', 'encerradas30'
+            'instalados', 'periodicidade', 'diametros',
+            'pendencias', 'substituicoes', 'encerradas30'
         );
     }
 
