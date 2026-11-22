@@ -7,6 +7,7 @@ use App\Http\Controllers\ConsultaHierarquicaController;
 use App\Http\Controllers\FrotaController;
 use App\Http\Controllers\TremController;
 use App\Http\Controllers\MovimentacaoEquipamentoController;
+use App\Http\Controllers\PendenciaEquipamentoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -79,6 +80,14 @@ Route::middleware('auth')->group(function () {
             ->name('equipamentos.movimentacao.create');
         Route::post('/eixos/{eixo}/substituir/{tipo}', [MovimentacaoEquipamentoController::class, 'store'])
             ->name('equipamentos.movimentacao.store');
+    });
+
+    // Gestão de pendências: consulta, cadastro e resolução para os três perfis.
+    Route::middleware('perfil:administrador,gestor,tecnico')->group(function () {
+        Route::get('/pendencias', [PendenciaEquipamentoController::class, 'index'])->name('pendencias.index');
+        Route::get('/pendencias/criar', [PendenciaEquipamentoController::class, 'create'])->name('pendencias.create');
+        Route::post('/pendencias', [PendenciaEquipamentoController::class, 'store'])->name('pendencias.store');
+        Route::patch('/pendencias/{pendencia}/resolver', [PendenciaEquipamentoController::class, 'resolver'])->name('pendencias.resolver');
     });
 
     // Consulta de frotas e trens: todos os perfis autenticados.
