@@ -49,13 +49,13 @@ Registro, consulta, filtragem e resolução de pendências técnicas de rodeiros
 
 ### 4.3. Importação de dados CSV — iniciada
 
-Importação unificada de **periodicidade percentual, diâmetros LR e LO**, identificando frota, trem, carro, eixo e série em um único CSV. O sistema só atualiza condições com data posterior à última registrada, verifica a instalação ativa e executa alterações em transação. A importação disponibiliza relatório individual por equipamento, filtros de resultado e exportação em CSV. Acesso restrito ao administrador.
+Importação unificada de **periodicidade dos rodeiros e motores, diâmetros LR e LO**, identificando frota, trem, carro, eixo e ambas as séries em um único CSV de 11 colunas. O sistema só atualiza condições com data posterior à última registrada, verifica a instalação ativa e executa alterações em transação. A importação disponibiliza relatório individual por equipamento, filtros de resultado e exportação em CSV. Acesso restrito ao administrador.
 
 ### 4.4. Priorização de equipamentos — abas e rankings independentes (testes pendentes)
 
-A visualização é separada nas abas **Rodeiros** e **Motores**. Na aba de rodeiros, aparecem três tabelas: pendências técnicas (crítica → alta → média → baixa), diâmetros abaixo de 745 mm (menor primeiro, incluindo card de críticos <= 742 mm) e periodicidade >= 100% (maior percentual primeiro). A aba de motores apresenta as pendências, pois não há medições LR/LO ou percentual de periodicidade para esse tipo.
+A visualização é separada nas abas **Rodeiros** e **Motores**. Na aba de rodeiros, aparecem três tabelas: pendências técnicas (crítica → alta → média → baixa), diâmetros abaixo de 745 mm (menor primeiro, incluindo card de críticos <= 742 mm) e periodicidade >= 100% (maior percentual primeiro). A aba de motores apresenta **pendências e periodicidade**, sem diâmetro.
 
-Cada tabela apresenta os **10 primeiros registros** após seus próprios filtros de trem/carro, e a tabela de pendências também aceita filtro por prioridade. A seleção de uma tabela não altera as outras. Os limites são apenas parâmetros acadêmicos de apoio à gestão.
+Cada tabela apresenta os **10 primeiros registros** após seus próprios filtros de frota/trem/carro, e a tabela de pendências também aceita filtro por prioridade. Os cards de pendências mostram total, críticas, altas, médias e baixas; os de periodicidade, totais >=100%, >=105% e >=110%. A seleção de uma tabela não altera as outras. Os limites são apenas parâmetros acadêmicos de apoio à gestão.
 
 ### 4.5. Movimentação de equipamentos — implementada
 
