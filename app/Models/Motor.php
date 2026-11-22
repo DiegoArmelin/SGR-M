@@ -12,6 +12,7 @@ class Motor extends Model
     protected $fillable = [
         'numero_serie',
         'status',
+        'periodicidade',
         'data_atualizacao_condicao',
         'observacoes',
     ];
@@ -19,6 +20,7 @@ class Motor extends Model
     protected function casts(): array
     {
         return [
+            'periodicidade' => 'decimal:2',
             'data_atualizacao_condicao' => 'datetime',
         ];
     }
