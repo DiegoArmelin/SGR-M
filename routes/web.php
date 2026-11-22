@@ -9,6 +9,7 @@ use App\Http\Controllers\TremController;
 use App\Http\Controllers\MovimentacaoEquipamentoController;
 use App\Http\Controllers\PendenciaEquipamentoController;
 use App\Http\Controllers\ImportacaoPeriodicidadeController;
+use App\Http\Controllers\RankingPriorizacaoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -69,6 +70,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/equipamentos/hierarquica', [ConsultaHierarquicaController::class, 'index'])
         ->middleware('perfil:administrador,gestor,tecnico')
         ->name('equipamentos.hierarquica');
+
+    // Ranking consolidado de pendências e condições: leitura para os três perfis.
+    Route::get('/ranking', [RankingPriorizacaoController::class, 'index'])
+        ->middleware('perfil:administrador,gestor,tecnico')
+        ->name('ranking.index');
 
     // Histórico de instalações: consulta permitida a todos os perfis.
     Route::get('/eixos/{eixo}/historico', [MovimentacaoEquipamentoController::class, 'historico'])
