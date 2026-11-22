@@ -122,6 +122,9 @@ class RankingPriorizacaoService
                 $itens->push([
                     'nivel' => $nivel,
                     'frota' => $eixo->carro->trem->frota->codigo,
+                    'frota_id' => $eixo->carro->trem->frota_id,
+                    'trem_id' => $eixo->carro->trem_id,
+                    'carro_id' => $eixo->carro_id,
                     'trem' => $eixo->carro->trem->codigo,
                     'carro' => $eixo->carro->codigo,
                     'posicao' => $eixo->numero,
