@@ -143,7 +143,8 @@ As restrições de exclusividade de instalações ativas utilizam **colunas gera
 | Atual | Gestão de pendências técnicas | Implementação inicial; testes pendentes |
 | 04 | Importação de condições dos rodeiros CSV | Implementação enviada ao GitHub, aguardando testes |
 | 05 | Abas e rankings separados de pendências, diâmetros e periodicidade | Versão anterior validada; nova interface aguardando testes |
-| Futuras | Indicadores e funcionalidades administrativas | Planejadas |
+| 06 | Dashboard gerencial de indicadores | Código implementado, testes pendentes |
+| Futuras | Relatórios exportáveis, validação integrada e entrega final | Planejadas |
 
 ### Concluído
 
@@ -347,3 +348,5 @@ A autenticação e o controle de perfis constituem uma camada inicial de seguran
 ---
 
 **SGR-M — Grupo 10 | Fatec São Paulo | 2026**
+
+- [Módulo 06 — Dashboard Gerencial](docs/06-dashboard-gerencial.md).
