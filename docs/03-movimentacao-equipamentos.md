@@ -25,6 +25,8 @@ Implementar a substituição de um rodeiro ou motor instalado em um eixo por out
 | Equipamento retirado | Status alterado para `em_manutencao` |
 | Equipamento instalado | Status alterado para `instalado` |
 | Histórico | Instalação anterior recebe `data_retirada`; novo registro recebe `data_instalacao` |
+| Pendências do equipamento retirado | São encerradas automaticamente, apenas para a mesma posição de eixo, na mesma transação |
+| Pendência de outro equipamento | Permanece aberta, sem alteração |
 | Garantia de integridade | As atualizações ocorrem em uma única transação; índices únicos impedem duplicidade ativa |
 
 **Observação:** o cadastro dos equipamentos usados nesta simulação é fictício. A movimentação não representa autorização operacional para intervenção em equipamentos ferroviários reais.
@@ -54,6 +56,7 @@ Não foram necessárias novas tabelas: a implementação utiliza `rodeiros`, `mo
 - **`whereNull('data_retirada')`:** identifica instalações atualmente ativas.
 - **`ValidationException::withMessages()`:** devolve erros de regra de negócio aos formulários de forma legível.
 - **`update()` e `create()`:** encerram instalação antiga, criam vínculo novo e atualizam status dos equipamentos.
+- **`PendenciaEquipamento::where(...)->update(...)`:** somente após a troca válida, encerra as pendências abertas da mesma peça e eixo, definindo `resolvida_em` dentro da transação. Se a substituição falhar, nenhuma pendência é encerrada.
 
 ### Controller
 
@@ -85,7 +88,7 @@ php artisan test
 4. Selecionar uma série disponível na lista ou digitá-la manualmente (se ambos preenchidos, a digitação tem prioridade).
 5. Escolher data e um motivo do catálogo específico do equipamento e confirmar a substituição.
 6. Conferir o novo equipamento na consulta hierárquica.
-7. Abrir o **Histórico** do eixo e confirmar que o equipamento anterior passou a ter data de retirada, preservando sua instalação antiga.
+7. Abrir o **Histórico** do eixo e confirmar a retirada da instalação anterior. Verificar também na tela de pendências que as ocorrências abertas do mesmo equipamento nessa posição foram encerradas automaticamente.
 8. Consultar o equipamento anterior por série e confirmar status `em_manutencao`.
 9. Testar entrada inexistente ou não disponível: o sistema deve bloquear a operação sem movimentação parcial.
 10. Tentar acessar a rota como gestor: deve retornar HTTP 403.
@@ -123,3 +126,7 @@ A lista fixa de motivos da primeira implementação foi substituída por uma tab
 ## 10. Evolução posterior: seleção de estoque assistida
 
 O formulário de substituição agora oferece lista suspensa de séries com status `estoque`, filtradas para rodeiros ou motores. A digitação manual permanece disponível para operações em que o usuário já conhece o número de série. Não houve alteração de tabelas nem de migrations nessa evolução. O teste `SelecaoEstoqueMovimentacaoTest` verifica a filtragem, a substituição via lista, a prioridade da entrada manual e a recusa de envio sem série de entrada. A aprovação ainda depende da execução no Laragon.
+
+## 11. Integração com pendências técnicas
+
+A movimentação agora pode ser iniciada diretamente pelo botão **Substituir** da listagem de pendências. O formulário preserva o contexto de origem e, após a troca concluída, retorna à lista. O serviço fecha as pendências da peça efetivamente retirada no mesmo eixo, sem encerrar pendências de motores ao substituir rodeiros ou vice-versa. A funcionalidade anterior de resolução manual foi removida. Não há nova migration nesta alteração; executar `php artisan test --filter=PendenciaEquipamentoTest` e a suíte completa. A aprovação local da evolução ainda está pendente.
