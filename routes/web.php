@@ -10,6 +10,7 @@ use App\Http\Controllers\MovimentacaoEquipamentoController;
 use App\Http\Controllers\PendenciaEquipamentoController;
 use App\Http\Controllers\ImportacaoPeriodicidadeController;
 use App\Http\Controllers\RankingPriorizacaoController;
+use App\Http\Controllers\DashboardGerencialController;
 
 /*
 |--------------------------------------------------------------------------
@@ -70,6 +71,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/equipamentos/hierarquica', [ConsultaHierarquicaController::class, 'index'])
         ->middleware('perfil:administrador,gestor,tecnico')
         ->name('equipamentos.hierarquica');
+
+    // Dashboard gerencial somente leitura, disponível aos três perfis.
+    Route::get('/indicadores', [DashboardGerencialController::class, 'index'])
+        ->middleware('perfil:administrador,gestor,tecnico')
+        ->name('dashboard.gerencial');
 
     // Ranking consolidado de pendências e condições: leitura para os três perfis.
     Route::get('/ranking', [RankingPriorizacaoController::class, 'index'])
