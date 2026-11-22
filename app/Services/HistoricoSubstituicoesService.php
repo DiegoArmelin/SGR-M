@@ -29,7 +29,7 @@ class HistoricoSubstituicoesService
             $meses[$chave] = ['chave' => $chave, 'rotulo' => $data->format('m/Y'), 'rodeiro' => 0, 'motor' => 0];
         }
 
-        $motivos = [];
+        $motivos = ['rodeiro' => [], 'motor' => []];
         $frotas = [];
         $totais = ['rodeiro' => 0, 'motor' => 0];
 
@@ -59,10 +59,10 @@ class HistoricoSubstituicoesService
                 ->get();
 
             foreach ($porMotivo as $linha) {
-                $motivos[$linha->motivo] = ($motivos[$linha->motivo] ?? 0) + (int) $linha->total;
+                $motivos[$tipo][$linha->motivo] = (int) $linha->total;
             }
 
-            $porFrota = (clone $consulta)->select('f.codigo as frota')
+            $porFrota = (clone $consulta)->whereIn('f.codigo', ['I', 'J', 'L'])->select('f.codigo as frota')
                 ->selectRaw('COUNT(*) as total')
                 ->groupBy('f.codigo')->get();
 
@@ -72,7 +72,8 @@ class HistoricoSubstituicoesService
             }
         }
 
-        arsort($motivos);
+        arsort($motivos['rodeiro']);
+        arsort($motivos['motor']);
         ksort($frotas);
 
         return [
