@@ -26,8 +26,8 @@ A informação **trens cadastrados por frota** foi removida da tela. Também for
 ### Histórico de substituições
 
 - **Gráfico de barras:** quantidades de rodeiros e motores retirados em cada um dos últimos **seis meses**, terminando no mês da data final selecionada (ou no mês atual).
-- **Gráfico de rosca:** participação dos motivos de retirada no intervalo selecionado, unificando rodeiros e motores quando compartilham uma descrição.
-- **Gráfico por frota:** quantidades de rodeiros e motores substituídos por frota no período filtrado.
+- **Dois gráficos de rosca:** motivos de retirada separados em **Rodeiros** e **Motores**, exibidos lado a lado no desktop/PDF e empilhados em telas pequenas. Cada rosca tem sua própria distribuição percentual e total.
+- **Gráfico por frota:** quantidades de rodeiros e motores substituídos por frota no período filtrado, exibindo somente as frotas fictícias **I, J e L**; a frota extra de teste é omitida dessa comparação.
 - **Filtros:** data inicial, data final, frota e motivo/defeito da tabela `motivos_retirada`. Os filtros são utilizados em **todos** os gráficos e nas contagens.
 - **Totais:** número de rodeiros, motores e substituições somadas no período filtrado.
 - **Exportação PDF:** o botão abre uma **versão de impressão** que contém os três gráficos e os mesmos filtros. Ao utilizar **Imprimir → Salvar como PDF** no navegador (Chrome/Edge), o arquivo é gerado no computador, sem instalar pacote adicional.
@@ -137,3 +137,74 @@ Limitações: o PDF é exportado pelo recurso de impressão do navegador, **não
 - **Usabilidade:** distinção visual entre situação atual e eventos históricos.
 
 **Resumo para apresentar:** “O dashboard separa a situação atual da frota do histórico de movimentações, visualiza séries mensais e distribuição das retiradas por motivo e frota, permite filtros e exportação por PDF e utiliza uma carga acadêmica fictícia identificada e isolada do parque instalado.”
+
+## 9. Evolução — Indicadores de tendência e simulação de pendências
+
+### 9.1 Painel de visão geral
+
+Os três cards principais passam a aparecer juntos no topo:
+
+| Card | Cálculo | Comportamento |
+|---|---|---|
+| Total de equipamentos instalados | Rodeiros + motores com instalações ativas | Atualiza com filtro de frota |
+| Pendências encerradas nos últimos 30 dias | `situacao = resolvida` e `resolvida_em` entre hoje e 29 dias anteriores | Contagem real de encerramentos registrados; o número zero é válido |
+| Tendência do saldo de pendências | Compara as janelas atual e anterior de 30 dias | Aumentando, diminuindo ou estável |
+
+Para a tendência:
+- **Aberturas** = quantidade de ocorrências com `created_at` no período.
+- **Encerramentos** = quantidade com situação resolvida e `resolvida_em` no período.
+- **Saldo** = aberturas − encerramentos.
+- **Variação do saldo** = saldo dos últimos 30 dias − saldo dos 30 dias anteriores.
+- **Aumentando** se a variação for positiva, **diminuindo** se negativa, e **estável** se zero.
+
+O indicador compara o **fluxo líquido** de pendências, não a quantidade total acumulada de pendências abertas. Por exemplo, um saldo que muda de +10 para +3 significa que as pendências ainda crescem, mas em ritmo menor; por isso a tendência é classificada como “diminuindo”. Essa interpretação é explicitada na legenda.
+
+Se o card de encerramentos estiver zerado, verifique se há ocorrências com situação resolvida **e data de resolução preenchida** dentro da janela. O fechamento de uma instalação, por si só, não constitui fechamento automático de uma pendência sem registro dessa resolução.
+
+### 9.2 Carga fictícia de pendências técnicas
+
+Novo seeder `database/seeders/PendenciasDemonstracaoSeeder.php`. Insere somente pendências **associadas a equipamentos atualmente instalados** nas frotas I, J e L.
+
+| Prioridade | Rodeiros | Motores | Total |
+|---|---:|---:|---:|
+| Crítica | 5 | 2 | 7 |
+| Alta | 10 | 4 | 14 |
+| Média | 40 | 17 | 57 |
+| Baixa | 15 | 7 | 22 |
+| **Total de abertas** | **70** | **30** | **100** |
+
+A carga inclui **20 registros resolvidos adicionais, exclusivamente fictícios**: 12 com encerramento nos últimos 30 dias e 8 nos 30 dias anteriores. Portanto, **120 registros fictícios no total**, dos quais 100 são abertos. Isso permite mostrar o card e o indicador de tendência em funcionamento sem modificar históricos ou resolver pendências reais.
+
+Características de segurança e rastreabilidade:
+- Restrito a ambiente de desenvolvimento/testes; bloqueado em produção.
+- Usa marcador `[SGRM-DEMO-PEND]` na descrição para identificação.
+- Usa motivo do catálogo, `eixo_id` e a FK correspondente à série ativa.
+- Distribui posições entre frotas I/J/L, de modo reprodutível.
+- Não altera equipamentos, instalações e pendências reais existentes.
+- É idempotente: reexecução não duplica registros; se detectar conjunto incompleto, interrompe em vez de sobrescrever dados.
+- Os fechamentos simulados são **registros adicionais**, não encerramentos das 100 pendências abertas.
+
+### 9.3 Passos no Laragon
+
+Faça backup do banco de desenvolvimento antes de inserir dados fictícios.
+
+```bash
+git switch feature/modulo-6-dashboard-gerencial
+git pull origin feature/modulo-6-dashboard-gerencial
+
+php artisan test --filter=DashboardGerencialTest
+php artisan test --filter=HistoricoSubstituicoesTest
+php artisan test --filter=PendenciasDemonstracaoSeederTest
+php artisan test
+```
+
+Após a aprovação dos testes, execute:
+
+```bash
+php artisan db:seed --class=MotivosRetiradaSeeder
+php artisan db:seed --class=PendenciasDemonstracaoSeeder
+```
+
+Não é necessário `migrate:fresh` nem recriar os equipamentos. Abra `/indicadores` para conferir os três cards superiores e `/indicadores/historico` para verificar as roscas por tipo e a ausência da frota de teste na comparação de frotas.
+
+**Evidência pendente:** os testes e as telas desta evolução precisam ser aprovados no Laragon. A versão anterior do módulo havia sido validada.
