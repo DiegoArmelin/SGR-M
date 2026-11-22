@@ -2,11 +2,20 @@
 <form method="GET" action="{{ route('ranking.index') }}" class="rank-filters" data-prefix="{{ $prefixo }}">
     <input type="hidden" name="tipo" value="{{ $tipo }}">
     <div>
+        <label class="form-label" for="{{ $prefixo }}_frota">Frota</label>
+        <select class="form-control rank-frota" name="{{ $prefixo }}_frota" id="{{ $prefixo }}_frota">
+            <option value="">Todas as frotas</option>
+            @foreach($frotas as $frota)
+                <option value="{{ $frota->codigo }}" @selected(($filtros[$prefixo . '_frota'] ?? '') === $frota->codigo)>{{ $frota->codigo }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div>
         <label class="form-label" for="{{ $prefixo }}_trem">Trem</label>
         <select class="form-control rank-trem" name="{{ $prefixo }}_trem" id="{{ $prefixo }}_trem">
             <option value="">Todos os trens</option>
             @foreach($trens as $trem)
-                <option value="{{ $trem->codigo }}" @selected(($filtros[$prefixo . '_trem'] ?? '') === $trem->codigo)>{{ $trem->codigo }}</option>
+                <option value="{{ $trem->codigo }}" data-frota="{{ $trem->frota->codigo }}" @selected(($filtros[$prefixo . '_trem'] ?? '') === $trem->codigo)>{{ $trem->codigo }}</option>
             @endforeach
         </select>
     </div>
@@ -16,7 +25,7 @@
             <option value="">Todos os carros</option>
             @foreach($trens as $trem)
                 @foreach($trem->carros as $carro)
-                    <option value="{{ $carro->codigo }}" data-trem="{{ $trem->codigo }}"
+                    <option value="{{ $carro->codigo }}" data-trem="{{ $trem->codigo }}" data-frota="{{ $trem->frota->codigo }}"
                         @selected(($filtros[$prefixo . '_carro'] ?? '') === $carro->codigo)>{{ $carro->codigo }}</option>
                 @endforeach
             @endforeach
