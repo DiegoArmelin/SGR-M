@@ -14,6 +14,9 @@
         <form action="{{ route('equipamentos.movimentacao.store', ['eixo' => $eixo, 'tipo' => $tipo]) }}" method="POST">
             @csrf
             <input type="hidden" name="numero_serie_saida" value="{{ $atual->numero_serie }}">
+            @if($origemPendencias)
+                <input type="hidden" name="origem" value="pendencias">
+            @endif
             {{-- Opção principal: lista dos equipamentos disponíveis em estoque. --}}
             <div class="form-group">
                 <label class="form-label" for="numero_serie_estoque">
@@ -60,6 +63,10 @@
             <button class="btn-primary" type="submit" onclick="return confirm('Confirmar substituição? Esta operação alterará o histórico e os status dos equipamentos.');">Confirmar substituição</button>
         </form>
     @endif
-    <p><a href="{{ route('equipamentos.hierarquica', ['frota_id' => $eixo->carro->trem->frota_id, 'trem_id' => $eixo->carro->trem_id, 'carro_id' => $eixo->carro_id]) }}">Voltar à consulta hierárquica</a></p>
+    @if($origemPendencias)
+        <p><a href="{{ route('pendencias.index') }}">Voltar às pendências</a></p>
+    @else
+    <p><a href="{{ route('equipamentos.hierarquica', ['frota_id' => $eixo->carro->trem->frota_id, 'trem_id' => $eixo->carro->trem_id, 'carro_id' => $eixo->carro_id ]) }}">Voltar à consulta hierárquica</a></p>
+    @endif
 </section></main>
 @endsection
