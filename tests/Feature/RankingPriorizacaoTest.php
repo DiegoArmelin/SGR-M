@@ -312,4 +312,85 @@ class RankingPriorizacaoTest extends TestCase
             ->assertViewHas('totalPeriodicidades', 1);
     }
 
+
+    /** Mais de uma ocorrência no mesmo equipamento não infla a porcentagem. */
+    public function test_cards_de_pendencias_usam_equipamentos_distintos_como_numerador(): void
+    {
+        $afetado = $this->instalar('I','I01','I011',1,'RD-AFETADO');
+        $this->instalar('I','I01','I011',2,'RD-SEM-FALHA');
+        $this->criarPendencia($afetado,'critica');
+        $this->criarPendencia($afetado,'alta');
+
+        $this->actingAs(User::factory()->create(['perfil'=>'gestor']))
+            ->get(route('ranking.index',['p_frota'=>'I']))
+            ->assertOk()
+            ->assertViewHas('instaladosPendencias',2)
+            ->assertViewHas('totalPendenciasGeral',2)
+            ->assertViewHas('equipamentosComPendencia',1)
+            ->assertViewHas('pendenciasEquipamentosPorPrioridade',fn ($v) =>
+                $v['critica']===1 && $v['alta']===1)
+            ->assertSee('50,0%')
+            ->assertSee('de 2 instalados');
+    }
+
+    /** Cada bloco possui denominador de instalados próprio por localização. */
+    public function test_percentuais_diametro_e_periodicidade_respeitam_os_filtros_independentes(): void
+    {
+        $this->instalar('I','I01','I011',1,'RD-I-ALERTA','rodeiro',[
+            'diametro_lr'=>741,'diametro_lo'=>742,'periodicidade'=>112
+        ]);
+        $this->instalar('I','I01','I011',2,'RD-I-NORMAL','rodeiro',[
+            'diametro_lr'=>800,'diametro_lo'=>801,'periodicidade'=>90
+        ]);
+        $this->instalar('J','J26','J261',1,'RD-J-ALERTA','rodeiro',[
+            'diametro_lr'=>744,'diametro_lo'=>745,'periodicidade'=>106
+        ]);
+
+        $this->actingAs(User::factory()->create(['perfil'=>'gestor']))
+            ->get(route('ranking.index',['d_frota'=>'I','r_frota'=>'J']))
+            ->assertOk()
+            ->assertViewHas('instaladosDiametros',2)
+            ->assertViewHas('totalDiametros',1)
+            ->assertViewHas('diametrosCriticos',1)
+            ->assertViewHas('instaladosPeriodicidade',1)
+            ->assertViewHas('totalPeriodicidades',1)
+            ->assertViewHas('periodicidades105',1)
+            ->assertViewHas('periodicidades110',0)
+            ->assertSee('50,0%')
+            ->assertSee('100,0%');
+    }
+
+    /** Cards de motores com periodicidade compartilham o mesmo denominador. */
+    public function test_cards_periodicidade_motores_calculam_percentual_de_instalados(): void
+    {
+        $motor1=$this->instalar('I','I01','I011',1,'MT-CRITICO','motor');
+        $motor2=$this->instalar('I','I01','I011',2,'MT-NORMAL','motor');
+        $motor1['equipamento']->update(['periodicidade'=>111]);
+        $motor2['equipamento']->update(['periodicidade'=>94]);
+
+        $this->actingAs(User::factory()->create(['perfil'=>'gestor']))
+            ->get(route('ranking.index',['tipo'=>'motor','r_trem'=>'I01']))
+            ->assertOk()
+            ->assertViewHas('instaladosPeriodicidade',2)
+            ->assertViewHas('totalPeriodicidades',1)
+            ->assertViewHas('periodicidades105',1)
+            ->assertViewHas('periodicidades110',1)
+            ->assertSee('50,0%');
+    }
+
+    /** Não pode haver divisão por zero ao filtrar uma frota sem instalações. */
+    public function test_cards_com_nenhum_instalado_exibem_zero_porcento(): void
+    {
+        Frota::create(['codigo'=>'L']);
+        $this->actingAs(User::factory()->create(['perfil'=>'gestor']))
+            ->get(route('ranking.index',[
+                'p_frota'=>'L','d_frota'=>'L','r_frota'=>'L'
+            ]))
+            ->assertOk()
+            ->assertViewHas('instaladosPendencias',0)
+            ->assertViewHas('instaladosDiametros',0)
+            ->assertViewHas('instaladosPeriodicidade',0)
+            ->assertSee('0,0%');
+    }
+
 }
