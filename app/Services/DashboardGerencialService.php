@@ -62,6 +62,21 @@ class DashboardGerencialService
             $substituicoes[$tipo] = $q->count();
         }
 
+        // Data de encerramento da pendência: últimos 30 dias corridos, hoje inclusive.
+        // Conta ocorrências encerradas, inclusive as peças já retiradas.
+        $inicio30 = now()->startOfDay()->subDays(29);
+        $encerradas30 = DB::table('pendencias_equipamentos as p')
+            ->join('eixos as e', 'e.id', '=', 'p.eixo_id')
+            ->join('carros as c', 'c.id', '=', 'e.carro_id')
+            ->join('trens as t', 't.id', '=', 'c.trem_id')
+            ->join('frotas as f', 'f.id', '=', 't.frota_id')
+            ->where('p.situacao', 'resolvida')
+            ->whereNotNull('p.resolvida_em')
+            ->where('p.resolvida_em', '>=', $inicio30)
+            ->where('p.resolvida_em', '<=', now())
+            ->when($frota, fn ($q) => $q->where('f.codigo', $frota))
+            ->count();
+
         $totaisFrota = DB::table('frotas as f')
             ->leftJoin('trens as t', 't.frota_id', '=', 'f.id')
             ->select('f.codigo')
@@ -73,7 +88,7 @@ class DashboardGerencialService
 
         return compact(
             'instalados', 'periodicidade', 'semLeitura', 'diametros',
-            'pendencias', 'substituicoes', 'totaisFrota'
+            'pendencias', 'substituicoes', 'totaisFrota', 'encerradas30'
         );
     }
 
