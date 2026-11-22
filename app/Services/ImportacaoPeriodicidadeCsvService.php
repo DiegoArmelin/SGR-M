@@ -2,22 +2,20 @@
 
 namespace App\Services;
 
+use App\Models\Eixo;
 use App\Models\InstalacaoRodeiro;
 use App\Models\Rodeiro;
-use DateTimeImmutable;
+use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Importa, no mesmo CSV, diâmetros LR/LO e periodicidade dos rodeiros.
+ * Importa, em um único CSV, diâmetros LR/LO e periodicidade de rodeiros.
  *
- * Cada linha identifica a frota, trem, carro, eixo, série e data de medição.
- * A série só é atualizada quando ocupa a posição informada e a data recebida
- * é estritamente posterior à data_atualizacao_condicao armazenada.
- *
- * Valida todo o arquivo ANTES de gravar. Linhas com data antiga ou posição
- * divergente são ignoradas e contabilizadas, sem alterar outros equipamentos.
+ * A linha deve identificar a posição física e o número de série instalado.
+ * Valores somente substituem os existentes quando data_atualizacao do CSV
+ * for estritamente posterior à última data armazenada para aquele rodeiro.
  */
 class ImportacaoPeriodicidadeCsvService
 {
@@ -29,149 +27,171 @@ class ImportacaoPeriodicidadeCsvService
     ];
 
     /**
-     * @return array{linhas:int,atualizados:int,desatualizados:int,divergentes:int}
+     * @return array{linhas:int,atualizados:int,ignorados_data:int,ignorados_posicao:int}
      */
     public function importar(UploadedFile $arquivo): array
     {
         $handle = fopen($arquivo->getRealPath(), 'rb');
+
         if ($handle === false) {
-            $this->falhar('Não foi possível abrir o arquivo CSV.');
+            $this->falhar('Não foi possível abrir o arquivo enviado.');
         }
 
         try {
-            $cabecalho = fgetcsv($handle, 0, ';', '"', '\\');
+            $primeiraLinha = fgets($handle);
 
-            if ($cabecalho === false) {
-                $this->falhar('O arquivo está vazio.');
+            if ($primeiraLinha === false) {
+                $this->falhar('O arquivo CSV está vazio.');
             }
 
-            // Remove BOM UTF-8; valida as nove colunas exatamente como combinado.
-            $cabecalho[0] = preg_replace('/^\xEF\xBB\xBF/', '', $cabecalho[0]);
-            $colunas = array_map(fn ($v) => strtolower(trim((string) $v)), $cabecalho);
+            // Cabeçalho UTF-8 com BOM é aceito (inclusive Excel).
+            $primeiraLinha = preg_replace('/^\xEF\xBB\xBF/', '', $primeiraLinha);
+            $delimitador = str_contains($primeiraLinha, ';') ? ';' : ',';
+            $nomes = array_map(
+                fn ($nome) => strtolower(trim((string) $nome)),
+                str_getcsv($primeiraLinha, $delimitador)
+            );
 
-            if ($colunas !== self::COLUNAS) {
-                $this->falhar('Cabeçalho inválido. Utilize as nove colunas na ordem indicada, separadas por ponto e vírgula.');
+            if (count($nomes) !== count(self::COLUNAS)
+                || count(array_unique($nomes)) !== count(self::COLUNAS)
+                || array_diff(self::COLUNAS, $nomes)) {
+                $this->falhar('Cabeçalho inválido. Use as nove colunas indicadas no formulário.');
             }
 
-            $registros = [];
+            $indices = array_flip($nomes);
+            $dados = [];
             $numeroLinha = 1;
+            $seriesUsadas = [];
 
-            while (($valores = fgetcsv($handle, 0, ';', '"', '\\')) !== false) {
+            // Valida todo o conteúdo antes de qualquer atualização no banco.
+            while (($campos = fgetcsv($handle, 0, $delimitador, '"', '\\')) !== false) {
                 $numeroLinha++;
 
-                if (count($valores) === 1 && trim((string) $valores[0]) === '') {
+                if (count($campos) === 1 && trim((string) $campos[0]) === '') {
                     continue;
                 }
 
-                if (count($registros) >= self::MAX_LINHAS) {
-                    $this->falhar('O CSV ultrapassou 10.000 registros.');
+                if (count($dados) >= self::MAX_LINHAS) {
+                    $this->falhar('O CSV ultrapassa 10.000 registros.');
                 }
 
-                if (count($valores) !== count(self::COLUNAS)) {
-                    $this->falhar("Linha {$numeroLinha}: quantidade de colunas inválida.");
+                if (count($campos) !== count($nomes)) {
+                    $this->falhar("Linha {$numeroLinha}: quantidade de colunas incorreta.");
                 }
 
-                $linha = array_combine(self::COLUNAS, array_map('trim', $valores));
-                $serie = $linha['serie_rodeiro'];
-
-                if ($serie === '' || strlen($serie) > 50) {
-                    $this->falhar("Linha {$numeroLinha}: série inválida.");
-                }
-                if (isset($registros[$serie])) {
-                    $this->falhar("Linha {$numeroLinha}: série duplicada ({$serie}).");
+                $linha = [];
+                foreach (self::COLUNAS as $nome) {
+                    $linha[$nome] = trim((string) $campos[$indices[$nome]]);
                 }
 
-                // Frota, trem e carro identificam a posição física informada.
-                foreach (['frota', 'trem', 'carro'] as $campo) {
-                    if ($linha[$campo] === '' || strlen($linha[$campo]) > 30) {
-                        $this->falhar("Linha {$numeroLinha}: {$campo} inválido.");
-                    }
+                if ($linha['frota'] === '' || $linha['trem'] === ''
+                    || $linha['carro'] === '' || $linha['serie_rodeiro'] === ''
+                    || strlen($linha['serie_rodeiro']) > 50
+                    || !preg_match('/^[1-9]\d*$/D', $linha['posicao'])) {
+                    $this->falhar("Linha {$numeroLinha}: frota, trem, carro, posição ou série inválidos.");
                 }
 
-                if (!preg_match('/^[1-9][0-9]*$/D', $linha['posicao'])) {
-                    $this->falhar("Linha {$numeroLinha}: posição deve ser um inteiro positivo.");
+                // A mesma série no arquivo não pode receber duas condições.
+                if (isset($seriesUsadas[$linha['serie_rodeiro']])) {
+                    $this->falhar("Linha {$numeroLinha}: série duplicada {$linha['serie_rodeiro']}.");
                 }
+                $seriesUsadas[$linha['serie_rodeiro']] = true;
 
-                // Decimal com ponto ou vírgula; sem separadores de milhar.
                 foreach (['diametro_lr', 'diametro_lo', 'periodicidade'] as $campo) {
-                    $numero = str_replace(',', '.', $linha[$campo]);
-                    if (!preg_match('/^\d+(?:\.\d{1,2})?$/D', $numero)) {
-                        $this->falhar("Linha {$numeroLinha}: {$campo} inválido.");
-                    }
-                    $limite = $campo === 'periodicidade' ? 999.99 : 9999.99;
-                    if ((float) $numero > $limite) {
-                        $this->falhar("Linha {$numeroLinha}: {$campo} fora do limite de armazenamento.");
-                    }
-                    $linha[$campo] = number_format((float) $numero, 2, '.', '');
+                    $linha[$campo] = $this->numero($linha[$campo], $campo, $numeroLinha);
                 }
 
-                // Aceita somente data ISO (dia) ou data/hora completa ISO.
-                $formato = strlen($linha['data_atualizacao']) === 10
-                    ? '!Y-m-d' : '!Y-m-d H:i:s';
-                $data = DateTimeImmutable::createFromFormat($formato, $linha['data_atualizacao']);
-                $erros = DateTimeImmutable::getLastErrors();
-                if ($data === false || ($erros !== false
-                    && ($erros['warning_count'] > 0 || $erros['error_count'] > 0))) {
-                    $this->falhar("Linha {$numeroLinha}: data inválida. Utilize AAAA-MM-DD ou AAAA-MM-DD HH:MM:SS.");
+                // Data e hora de medição do CSV; não utilizar now() como data
+                // da condição, pois distorceria a ordem temporal das coletas.
+                $data = $linha['data_atualizacao'];
+
+                if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/D', $data)) {
+                    $this->falhar("Linha {$numeroLinha}: data inválida; use AAAA-MM-DD HH:MM:SS.");
                 }
 
-                $linha['data_atualizacao'] = $data->format('Y-m-d H:i:s');
-                $linha['posicao'] = (int) $linha['posicao'];
-                $registros[$serie] = $linha;
+                try {
+                    $instante = Carbon::createFromFormat('!Y-m-d H:i:s', $data);
+                } catch (\Exception $e) {
+                    $this->falhar("Linha {$numeroLinha}: data de atualização inexistente.");
+                }
+
+                if (!$instante || $instante->format('Y-m-d H:i:s') !== $data) {
+                    $this->falhar("Linha {$numeroLinha}: data de atualização inexistente.");
+                }
+
+                $linha['data_atualizacao'] = $instante;
+                $dados[] = $linha;
             }
 
-            if (!$registros) {
-                $this->falhar('O CSV não contém registros para atualizar.');
+            if (!$dados) {
+                $this->falhar('O arquivo não contém registros.');
             }
 
-            // Confere todas as séries cadastradas antes de iniciar a transação.
-            // Um erro de identificação é diferente de uma movimentação anterior:
-            // série desconhecida invalida o arquivo; série retirada é ignorada.
-            $rodeiros = Rodeiro::query()
-                ->whereIn('numero_serie', array_keys($registros))
-                ->get()->keyBy('numero_serie');
+            // Séries inexistentes indicam arquivo incompatível: recusa total.
+            $series = array_keys($seriesUsadas);
+            $encontradas = Rodeiro::whereIn('numero_serie', $series)
+                ->pluck('numero_serie')->all();
+            $naoEncontradas = array_values(array_diff($series, $encontradas));
 
-            $desconhecidos = array_diff(array_keys($registros), $rodeiros->keys()->all());
-            if ($desconhecidos) {
-                $this->falhar('Série não cadastrada: ' . implode(', ', array_slice($desconhecidos, 0, 5)));
+            if ($naoEncontradas) {
+                $this->falhar(
+                    'Série não cadastrada: ' . implode(', ', array_slice($naoEncontradas, 0, 5))
+                    . (count($naoEncontradas) > 5 ? ' (e outras)' : '')
+                );
             }
 
-            // Atualiza e compara a data dentro da mesma transação; evita que uma
-            // importação mais antiga sobrescreva uma medição já registrada.
-            $resultado = DB::transaction(function () use ($registros, $rodeiros): array {
-                $atualizados = 0;
-                $desatualizados = 0;
-                $divergentes = 0;
+            // A transação protege a atualização em lote. Eixos são bloqueados
+            // com a mesma estratégia da movimentação para evitar troca
+            // concorrente enquanto a condição do rodeiro está sendo atualizada.
+            return DB::transaction(function () use ($dados): array {
+                $resultado = [
+                    'linhas' => count($dados),
+                    'atualizados' => 0,
+                    'ignorados_data' => 0,
+                    'ignorados_posicao' => 0,
+                ];
 
-                foreach ($registros as $serie => $linha) {
-                    $rodeiro = Rodeiro::query()->whereKey($rodeiros[$serie]->id)
-                        ->lockForUpdate()->firstOrFail();
-
-                    // Verifica o vínculo ATIVO do rodeiro à posição esperada.
-                    $instalacao = InstalacaoRodeiro::query()
-                        ->where('rodeiro_id', $rodeiro->id)
-                        ->whereNull('data_retirada')
-                        ->with('eixo.carro.trem.frota')
+                foreach ($dados as $linha) {
+                    $eixo = Eixo::query()
+                        ->where('numero', (int) $linha['posicao'])
+                        ->whereHas('carro', fn ($q) => $q
+                            ->where('codigo', $linha['carro'])
+                            ->whereHas('trem', fn ($t) => $t
+                                ->where('codigo', $linha['trem'])
+                                ->whereHas('frota', fn ($f) => $f
+                                    ->where('codigo', $linha['frota']))))
+                        ->lockForUpdate()
                         ->first();
 
-                    $eixo = $instalacao?->eixo;
-                    $carro = $eixo?->carro;
-                    $trem = $carro?->trem;
-                    $frota = $trem?->frota;
+                    // Uma localização que não existe indica erro estrutural
+                    // no CSV e deve interromper todo o lote.
+                    if (!$eixo) {
+                        $this->falhar(
+                            "Posição inexistente no cadastro: "
+                            . "{$linha['frota']}/{$linha['trem']}/{$linha['carro']}-{$linha['posicao']}."
+                        );
+                    }
 
-                    if (!$eixo
-                        || $frota?->codigo !== $linha['frota']
-                        || $trem?->codigo !== $linha['trem']
-                        || $carro?->codigo !== $linha['carro']
-                        || (int) $eixo->numero !== $linha['posicao']) {
-                        $divergentes++;
+                    $instalacao = InstalacaoRodeiro::query()
+                        ->where('eixo_id', $eixo->id)
+                        ->whereNull('data_retirada')
+                        ->lockForUpdate()
+                        ->first();
+
+                    $rodeiro = Rodeiro::query()
+                        ->where('numero_serie', $linha['serie_rodeiro'])
+                        ->lockForUpdate()->firstOrFail();
+
+                    // Peça que já foi retirada da posição (por troca manual)
+                    // não recebe dados dessa posição; mantém-se o histórico.
+                    if (!$instalacao || $instalacao->rodeiro_id !== $rodeiro->id) {
+                        $resultado['ignorados_posicao']++;
                         continue;
                     }
 
-                    $dataAnterior = $rodeiro->data_atualizacao_condicao;
-                    if ($dataAnterior !== null
-                        && $linha['data_atualizacao'] <= $dataAnterior->format('Y-m-d H:i:s')) {
-                        $desatualizados++;
+                    if ($rodeiro->data_atualizacao_condicao
+                        && !$linha['data_atualizacao']->greaterThan($rodeiro->data_atualizacao_condicao)) {
+                        $resultado['ignorados_data']++;
                         continue;
                     }
 
@@ -181,18 +201,30 @@ class ImportacaoPeriodicidadeCsvService
                         'periodicidade' => $linha['periodicidade'],
                         'data_atualizacao_condicao' => $linha['data_atualizacao'],
                     ]);
-                    $atualizados++;
+                    $resultado['atualizados']++;
                 }
 
-                return compact('atualizados', 'desatualizados', 'divergentes');
+                return $resultado;
             }, 3);
-
-            return ['linhas' => count($registros)] + $resultado;
         } finally {
             fclose($handle);
         }
     }
 
+    /** Valida formato numérico, sem impor limites físicos de diâmetro. */
+    private function numero(string $valor, string $campo, int $linha): string
+    {
+        $normalizado = str_replace(',', '.', trim($valor));
+
+        if (!preg_match('/^\d+(?:\.\d{1,2})?$/D', $normalizado)
+            || !is_numeric($normalizado) || (float) $normalizado > 99999.99) {
+            $this->falhar("Linha {$linha}: {$campo} inválido.");
+        }
+
+        return number_format((float) $normalizado, 2, '.', '');
+    }
+
+    /** Erros de validação são exibidos sem revelar mensagens internas de SQL. */
     private function falhar(string $mensagem): never
     {
         throw ValidationException::withMessages(['arquivo' => $mensagem]);
