@@ -105,17 +105,34 @@ class ConsultaHierarquicaTest extends TestCase
         ]))->assertNotFound();
     }
 
-    /** Parâmetros incompletos ou inexistentes devem ser rejeitados. */
+    /** IDs inválidos são rejeitados pelo validador HTTP com redirecionamento. */
     public function test_rejeita_filtros_invalidos(): void
     {
         $usuario = User::factory()->create(['perfil' => 'tecnico']);
 
+        // A frota precisa ser um identificador inteiro e existente.
         $this->actingAs($usuario)
             ->get(route('equipamentos.hierarquica', ['frota_id' => 'abc']))
             ->assertSessionHasErrors('frota_id');
 
+        // O ID 99999 não existe no banco temporário de testes.
+        // Por isso, a validação de entrada é executada antes da hierarquia.
         $this->actingAs($usuario)
-            ->get(route('equipamentos.hierarquica', ['trem_id' => 1]))
+            ->get(route('equipamentos.hierarquica', ['trem_id' => 99999]))
+            ->assertSessionHasErrors('trem_id');
+    }
+
+    /** Um trem válido não pode ser selecionado sem indicar sua frota. */
+    public function test_rejeita_trem_existente_sem_frota(): void
+    {
+        $usuario = User::factory()->create(['perfil' => 'tecnico']);
+        $frota = Frota::create(['codigo' => 'I']);
+        $trem = Trem::create(['frota_id' => $frota->id, 'codigo' => 'I01']);
+
+        // Os IDs são válidos, mas a seleção é hierarquicamente incompleta.
+        // O controller deve retornar 404 e não exibir dados inconsistentes.
+        $this->actingAs($usuario)
+            ->get(route('equipamentos.hierarquica', ['trem_id' => $trem->id]))
             ->assertNotFound();
     }
 }
