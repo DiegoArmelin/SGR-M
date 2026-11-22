@@ -8,15 +8,24 @@ use App\Models\Frota;
 use App\Models\InstalacaoMotor;
 use App\Models\InstalacaoRodeiro;
 use App\Models\Motor;
+use App\Models\MotivoRetirada;
 use App\Models\Rodeiro;
 use App\Models\Trem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Database\Seeders\MotivosRetiradaSeeder;
 use Tests\TestCase;
 
 class MovimentacaoEquipamentoTest extends TestCase
 {
     use RefreshDatabase;
+
+    /** Carrega os motivos de ambas as classes em cada banco de teste isolado. */
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(MotivosRetiradaSeeder::class);
+    }
 
     /** Monta uma posição fictícia com um rodeiro e motor já instalados. */
     private function prepararEixo(): array
@@ -52,7 +61,7 @@ class MovimentacaoEquipamentoTest extends TestCase
             'numero_serie_saida' => $antigo->numero_serie,
             'numero_serie_entrada' => $novo->numero_serie,
             'data_movimentacao' => '2026-11-01',
-            'motivo_retirada' => 'Troca programada',
+            'motivo_retirada_id' => MotivoRetirada::where('codigo', 'ROD005')->value('id'),
         ])->assertRedirect(route('equipamentos.hierarquica', [
             'frota_id' => $eixo->carro->trem->frota_id,
             'trem_id' => $eixo->carro->trem_id,
@@ -64,7 +73,7 @@ class MovimentacaoEquipamentoTest extends TestCase
         $this->assertSame(2, InstalacaoRodeiro::where('eixo_id', $eixo->id)->count());
         $this->assertSame(1, InstalacaoRodeiro::where('eixo_id', $eixo->id)->whereNull('data_retirada')->count());
         $this->assertDatabaseHas('instalacoes_rodeiros', [
-            'rodeiro_id' => $antigo->id, 'motivo_retirada' => 'Troca programada',
+            'rodeiro_id' => $antigo->id, 'motivo_retirada_id' => MotivoRetirada::where('codigo', 'ROD005')->value('id'),
         ]);
     }
 
@@ -81,7 +90,7 @@ class MovimentacaoEquipamentoTest extends TestCase
             'numero_serie_saida' => $antigo->numero_serie,
             'numero_serie_entrada' => $novo->numero_serie,
             'data_movimentacao' => '2026-11-01',
-            'motivo_retirada' => 'Defeito identificado',
+            'motivo_retirada_id' => MotivoRetirada::where('codigo', 'MOT002')->value('id'),
         ])->assertRedirect();
 
         $this->assertDatabaseHas('motores', ['id' => $antigo->id, 'status' => 'em_manutencao']);
@@ -118,7 +127,7 @@ class MovimentacaoEquipamentoTest extends TestCase
             'numero_serie_saida' => $antigo->numero_serie,
             'numero_serie_entrada' => $outro->numero_serie,
             'data_movimentacao' => '2026-11-01',
-            'motivo_retirada' => 'Troca programada',
+            'motivo_retirada_id' => MotivoRetirada::where('codigo', 'ROD005')->value('id'),
         ])->assertSessionHasErrors('numero_serie_entrada');
 
         $this->assertDatabaseHas('rodeiros', ['id' => $antigo->id, 'status' => 'instalado']);
@@ -138,7 +147,7 @@ class MovimentacaoEquipamentoTest extends TestCase
             'numero_serie_saida' => 'RD-INCORRETO',
             'numero_serie_entrada' => $novo->numero_serie,
             'data_movimentacao' => '2026-11-01',
-            'motivo_retirada' => 'Troca programada',
+            'motivo_retirada_id' => MotivoRetirada::where('codigo', 'ROD005')->value('id'),
         ])->assertSessionHasErrors('numero_serie_saida');
 
         $this->assertDatabaseHas('rodeiros', ['id' => $antigo->id, 'status' => 'instalado']);
@@ -158,7 +167,7 @@ class MovimentacaoEquipamentoTest extends TestCase
             'numero_serie_saida' => $antigo->numero_serie,
             'numero_serie_entrada' => $novo->numero_serie,
             'data_movimentacao' => '2025-12-31',
-            'motivo_retirada' => 'Troca programada',
+            'motivo_retirada_id' => MotivoRetirada::where('codigo', 'ROD005')->value('id'),
         ])->assertSessionHasErrors('data_movimentacao');
 
         $this->assertSame(1, InstalacaoRodeiro::where('eixo_id', $eixo->id)->whereNull('data_retirada')->count());
