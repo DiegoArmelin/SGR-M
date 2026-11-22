@@ -25,7 +25,6 @@ I;I01;I011;1;RD-SIM-0112648;829.10;829.50;95.50;2026-11-21 12:00:00</pre>
 
         <p><strong>Regras de importação:</strong> o sistema confirma que a frota, o trem, o carro e o eixo existem e que a série corresponde ao rodeiro instalado naquela posição. Registros de peças já substituídas são ignorados. Dados com data igual ou anterior à última medição também são ignorados.</p>
         <p>Se existir cabeçalho incorreto, uma série desconhecida, uma posição inexistente ou valor inválido, a importação inteira será recusada. O limite é de 2 MB e 10.000 linhas por arquivo.</p>
-        <p style="color:#475569">O sistema não impõe os limites de diâmetro e as diferenças entre rodas/eixos usados na geração dos arquivos fictícios. Essas condições são exclusivas dos CSVs de demonstração.</p>
 
         <form action="{{ route('importacoes.periodicidade.store') }}" method="POST" enctype="multipart/form-data">
             @csrf
