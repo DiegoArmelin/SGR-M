@@ -6,11 +6,11 @@ use App\Models\Eixo;
 use App\Models\InstalacaoMotor;
 use App\Models\InstalacaoRodeiro;
 use App\Models\Motor;
+use App\Models\MotivoRetirada;
 use App\Models\Rodeiro;
 use App\Services\SubstituicaoEquipamentoService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 /**
@@ -32,6 +32,9 @@ class MovimentacaoEquipamentoController extends Controller
             'tipo' => $tipo,
             'atual' => $instalacao?->{$tipo},
             'dataInstalacao' => $instalacao?->data_instalacao?->format('Y-m-d'),
+            // Apenas motivos ativos do tipo de equipamento escolhido.
+            'motivos' => MotivoRetirada::where('tipo_equipamento', $tipo)
+                ->where('ativo', true)->orderBy('descricao')->get(),
         ]);
     }
 
@@ -49,9 +52,7 @@ class MovimentacaoEquipamentoController extends Controller
             'numero_serie_saida' => ['required', 'string', 'max:50'],
             'numero_serie_entrada' => ['required', 'string', 'max:50'],
             'data_movimentacao' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-            'motivo_retirada' => [
-                'required', Rule::in(['Troca programada', 'Diâmetro condenado', 'Calo acentuado', 'Defeito identificado', 'Outro']),
-            ],
+            'motivo_retirada_id' => ['required', 'integer', 'exists:motivos_retirada,id'],
             'observacoes' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -61,7 +62,7 @@ class MovimentacaoEquipamentoController extends Controller
             $dados['numero_serie_entrada'],
             $dados['numero_serie_saida'],
             $dados['data_movimentacao'],
-            $dados['motivo_retirada'],
+            (int) $dados['motivo_retirada_id'],
             $dados['observacoes'] ?? null
         );
 
