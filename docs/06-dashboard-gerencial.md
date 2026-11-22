@@ -1,109 +1,139 @@
-# SGR-M — Módulo 06: Dashboard Gerencial
+# SGR-M — Módulo 06: Indicadores e Histórico de Substituições
 
 **Projeto:** SGR-M — Fatec São Paulo  
 **Disciplina:** Laboratório de Engenharia de Software  
 **Branch:** `feature/modulo-6-dashboard-gerencial`  
-**Situação:** código publicado no GitHub; execução dos novos testes e validação visual pendentes no Laragon.
+**Situação:** primeira versão validada pelo desenvolvedor; evolução para abas, gráficos e dados históricos publicada no GitHub, aguardando testes no Laragon.
 
 ## 1. Objetivo
 
-Consolidar os dados dos módulos anteriores em uma página gerencial somente leitura, permitindo acompanhar a composição do parque instalado, as pendências técnicas, as condições de diâmetro e periodicidade e as substituições de equipamentos.
+Apresentar a situação atual do parque instalado e disponibilizar uma **aba de histórico de substituições** com gráficos de barras por mês, gráfico de rosca por motivo de retirada e comparação por frota. Os relatórios podem ser **salvos em PDF a partir da impressão do navegador**, mantendo os filtros selecionados.
 
 ## 2. Regras de negócio
 
-| Indicador | Critério | Referência temporal |
-|---|---|---|
-| Rodeiros/motores instalados | Instalações com `data_retirada IS NULL` | Situação atual |
-| Periodicidade >=100% | Equipamentos instalados cujo percentual atende ao limite | Situação atual |
-| Sem leitura de periodicidade | Percentual nulo em equipamento instalado | Situação atual |
-| Diâmetro <745 mm | Menor entre LR e LO inferior a 745 | Situação atual |
-| Diâmetro crítico <=742 mm | Menor entre LR e LO até 742 | Situação atual |
-| Pendências por prioridade | Ocorrências abertas do equipamento instalado no eixo original | Situação atual |
-| Equipamentos com pendências | Equipamentos instalados **distintos** com ao menos uma ocorrência aberta | Situação atual |
-| Substituições de rodeiros/motores | Históricos com `data_retirada` preenchida | Período selecionado |
-| Trens por frota | Contagem de trens cadastrados | Cadastro atual |
+### Visão geral
 
-Os filtros por frota afetam **todos** os indicadores. Os filtros de data inicial/final afetam **somente substituições**, já que os demais indicadores são retratos do estado atual e não representam séries históricas. Sem datas, as substituições representam todo o histórico registrado.
+| Indicador | Critério |
+|---|---|
+| Parque instalado | **Um único card** com o total de rodeiros + motores em instalação ativa, e o detalhamento de ambos |
+| Pendências abertas | Equipamentos distintos afetados e total de ocorrências abertas |
+| Críticas e altas | Cards destacados separadamente, para rodeiros e motores |
+| Pendências encerradas nos últimos 30 dias | Ocorrências com situação `resolvida` e `resolvida_em` nos últimos 30 dias corridos, inclusive hoje, respeitando o filtro de frota |
+| Condições | Periodicidade >=100% para rodeiros e motores, diâmetros de rodeiros <745 mm e críticos <=742 mm |
 
-**Porcentagens** de condições e equipamentos com pendência usam como denominador o total do tipo instalado na frota. Várias pendências no mesmo equipamento contam como várias ocorrências, mas apenas uma peça afetada. Quando não existe equipamento instalado, o percentual é zero.
+A informação **trens cadastrados por frota** foi removida da tela. Também foram removidos os cards sobre equipamentos sem leitura de periodicidade. Todos os indicadores desta aba refletem a **situação atual**, salvo pendências encerradas, que usam a data de resolução.
 
-**Observação:** os indicadores são auxiliares para apresentação acadêmica; não representam autorização automática de intervenção em equipamentos reais.
+### Histórico de substituições
+
+- **Gráfico de barras:** quantidades de rodeiros e motores retirados em cada um dos últimos **seis meses**, terminando no mês da data final selecionada (ou no mês atual).
+- **Gráfico de rosca:** participação dos motivos de retirada no intervalo selecionado, unificando rodeiros e motores quando compartilham uma descrição.
+- **Gráfico por frota:** quantidades de rodeiros e motores substituídos por frota no período filtrado.
+- **Filtros:** data inicial, data final, frota e motivo/defeito da tabela `motivos_retirada`. Os filtros são utilizados em **todos** os gráficos e nas contagens.
+- **Totais:** número de rodeiros, motores e substituições somadas no período filtrado.
+- **Exportação PDF:** o botão abre uma **versão de impressão** que contém os três gráficos e os mesmos filtros. Ao utilizar **Imprimir → Salvar como PDF** no navegador (Chrome/Edge), o arquivo é gerado no computador, sem instalar pacote adicional.
+- **Diferença de escopo temporal:** os cards superiores consideram todo o período filtrado; o gráfico mensal sempre usa a janela de seis meses (e, dentro dela, os mesmos filtros). Isto é explicado na interface.
+
+A movimentação histórica utiliza `data_retirada` das tabelas `instalacoes_rodeiros` e `instalacoes_motores`; o motivo categorizado vem da chave `motivo_retirada_id`. Não se utiliza o horário de criação do registro como data de retirada.
 
 ## 3. Arquivos e responsabilidades
 
-| Arquivo | Finalidade |
+| Arquivo | Responsabilidade |
 |---|---|
-| `app/Services/DashboardGerencialService.php` | Agregação SQL de instalações, condições, pendências e retiradas |
-| `app/Http/Controllers/DashboardGerencialController.php` | Validação dos filtros de frota e período |
-| `resources/views/dashboard-gerencial/index.blade.php` | Cards, percentuais, legendas e apresentação gerencial |
-| `tests/Feature/DashboardGerencialTest.php` | Testes de acesso, indicadores, deduplicação e filtros |
-| `routes/web.php` | Rota GET `/indicadores` protegida por autenticação e perfis |
-| `resources/views/layouts/app.blade.php` | Link Indicadores na navegação |
-| `docs/06-dashboard-gerencial.md` | Documentação e roteiro acadêmico |
-| `README.md` | Registro do avanço do projeto |
+| `app/Services/DashboardGerencialService.php` | Indicadores atuais e encerramentos dos últimos 30 dias |
+| `app/Services/HistoricoSubstituicoesService.php` | Agregação de substituições por mês, motivo e frota com filtros |
+| `app/Http/Controllers/DashboardGerencialController.php` | Validação dos filtros e seleção das telas geral, histórica e de impressão |
+| `resources/views/dashboard-gerencial/index.blade.php` | Visão geral simplificada |
+| `resources/views/dashboard-gerencial/historico.blade.php` | Filtros e aba histórica |
+| `resources/views/dashboard-gerencial/historico-pdf.blade.php` | Versão de impressão para exportar por “Salvar como PDF” |
+| `resources/views/dashboard-gerencial/partials/historico-graficos.blade.php` | Gráficos reutilizáveis, exibidos na tela e no PDF |
+| `resources/views/dashboard-gerencial/partials/historico-estilos.blade.php` | Estilos dos gráficos, incluindo impressão |
+| `database/seeders/MotivosRetiradaSeeder.php` | Adiciona motivo de motor `MOT006` (periodicidade vencida) |
+| `database/seeders/HistoricoSubstituicoesSeeder.php` | Gera 24 meses de instalações históricas totalmente fictícias |
+| `tests/Feature/DashboardGerencialTest.php` | Testes da visão geral e pendências encerradas |
+| `tests/Feature/HistoricoSubstituicoesTest.php` | Testes dos filtros, gráficos e impressão |
+| `tests/Feature/HistoricoSubstituicoesSeederTest.php` | Testes do volume e idempotência da carga sintética |
+| `tests/Feature/MotivosRetiradaTest.php` | Adequação ao novo motivo de motor |
+| `routes/web.php` | Rotas protegidas da aba histórica e da versão imprimível |
 
-Nenhuma migration ou seeder foi necessária: os indicadores utilizam tabelas já existentes.
+## 4. Métodos e recursos utilizados
 
-## 4. Métodos e técnicas de programação
+- **`DashboardGerencialService::consultar()`:** consulta instalações ativas, pendências por criticidade e encerramentos de 30 dias.
+- **`HistoricoSubstituicoesService::consultar()`:** agrega os dados com filtros; inicializa os seis meses com zero, preservando meses sem trocas.
+- **`HistoricoSubstituicoesService::base()`:** encapsula `JOIN` entre instalações, eixos, carros, trens e frotas e aplica os filtros de data, frota e motivo.
+- **`DashboardGerencialController::filtrosHistorico()`:** valida o período (data final >= inicial), frota existente e motivo cadastrado.
+- **`historico()` e `imprimirHistorico()`:** utilizam o mesmo serviço para evitar discrepâncias entre tela e relatório.
+- **`GROUP BY` com `SUBSTR(data_retirada,1,7)`:** totaliza as retiradas por mês, compatível com MySQL e SQLite.
+- **SVG e CSS:** barras horizontais/verticais e rosca sem dependência JavaScript externa; as mesmas figuras são preservadas ao salvar em PDF pelo navegador.
+- **`HistoricoSubstituicoesSeeder::run()`:** prepara o histórico simulado em transação e com números de série únicos.
 
-- **`DashboardGerencialController::index()`:** valida `frota`, `inicio` e `fim`, rejeita período invertido e apresenta a view.
-- **`DashboardGerencialService::consultar()`:** devolve indicadores separados por tipo e critérios.
-- **`baseInstalacoes()`:** utiliza Query Builder com `JOIN` entre equipamento, instalação, eixo, carro, trem e frota.
-- **`instalacoesAtivas()`:** restringe à situação física atual (`data_retirada IS NULL`).
-- **`instalacoesHistoricas()`:** seleciona apenas instalações retiradas.
-- **`pendenciasAtivas()`:** relaciona pendência aberta ao mesmo eixo e número de equipamento atualmente instalado.
-- **`COUNT(DISTINCT i.id)`:** conta equipamentos com pendência sem inflar a porcentagem por múltiplas ocorrências.
-- **`whereDate()`:** filtra retiradas por data, de forma inclusiva.
-- **Expressão `CASE`:** seleciona a menor medição válida entre LR e LO, incluindo leituras parciais.
-- **Blade:** apresenta quantidades, percentuais, barras de proporção e cores sem modificar dados.
-- **`RefreshDatabase`:** testes isolados em banco temporário.
+## 5. Carga acadêmica fictícia de 24 meses
 
-## 5. Execução no Laragon
+**Finalidade:** produzir dados exclusivamente de demonstração; não confundir eventos simulados com histórico real do Metrô.
 
-Atualizar a branch `develop` que já possui o Módulo 05 e buscar a nova branch:
+Janela fixa: **dezembro/2024 a novembro/2026**, total de 24 meses. Em cada mês:
+
+| Tipo | Quantidade mensal | Total de 24 meses |
+|---|---:|---:|
+| Rodeiros | 25 | 600 |
+| Motores | 20 | 480 |
+| **Total** | **45** | **1.080** |
+
+A distribuição se alterna pelas frotas I/J/L, com participação aproximadamente equilibrada. Nos rodeiros, predominam **periodicidade vencida (~43%)** e **diâmetro condenado (~32%)**, com os demais motivos variados. Nos motores, predomina **periodicidade vencida (~65%)**, pois `diâmetro condenado` não se aplica a motores. Foram utilizados números de série `RD-HIST-...` e `MT-HIST-...` para distinguir os registros sintéticos.
+
+**Proteções:** o seeder impede execução em produção, utiliza transação, não remove equipamentos existentes, não altera instalações ativas, não muda pendências e não reutiliza números de série. A repetição do comando na mesma base não adiciona registros duplicados.
+
+**Limitação do conjunto sintético:** para preservar o parque instalado, os novos históricos são criados como registros **já retirados** em posições da estrutura de demonstração. Por isso, não devem ser interpretados como uma sequência operacional real de ocupação física dos eixos; alguns períodos fictícios podem coincidir com instalações atuais. A carga existe exclusivamente para gráficos e exercícios acadêmicos.
+
+### Executar no Laragon
+
+Faça backup do banco de desenvolvimento antes de executar o seeder. No terminal:
 
 ```bash
 git status
-git switch develop
-git pull origin develop
-git fetch origin
-git switch -c feature/modulo-6-dashboard-gerencial --track origin/feature/modulo-6-dashboard-gerencial
+git switch feature/modulo-6-dashboard-gerencial
+git pull origin feature/modulo-6-dashboard-gerencial
+php artisan db:seed --class=MotivosRetiradaSeeder
+php artisan db:seed --class=HistoricoSubstituicoesSeeder
+```
+
+**Não executar `migrate:fresh`.** A evolução não adiciona novas tabelas. O seeder de frotas/equipamentos já existentes também não deve ser repetido.
+
+### Testes
+
+```bash
 php artisan test --filter=DashboardGerencialTest
+php artisan test --filter=HistoricoSubstituicoesTest
+php artisan test --filter=HistoricoSubstituicoesSeederTest
+php artisan test --filter=MotivosRetiradaTest
 php artisan test
 ```
 
-Se a branch já existir localmente, fazer `git switch feature/modulo-6-dashboard-gerencial` e `git pull`.
+## 6. Verificação no navegador
 
-Não executar `migrate:fresh`, seeders ou migrations adicionais.
-
-## 6. Verificação funcional
-
-1. Entrar como administrador, gestor ou técnico.
-2. Abrir `http://sgr-m.test/indicadores`.
-3. Verificar instalados e alertas dos dois tipos; comparar com o ranking existente.
-4. Filtrar pela frota I e conferir que pendências, condições, parque e movimentações reflitam somente essa frota.
-5. Definir datas inicial e final e confirmar que apenas as substituições alteram suas contagens.
-6. Conferir equipamentos com mais de uma pendência: a quantidade de ocorrências é maior, mas o indicador de equipamentos afetados não os duplica.
-7. Conferir a contagem de rodeiros críticos pelo menor LR/LO.
-8. Verificar a lista de trens cadastrados por frota.
-9. Abrir os links para Ranking e Pendências.
+1. Acessar `http://sgr-m.test/indicadores` e confirmar a aba Visão geral.
+2. Verificar o parque total, os cards de crítica/alta e as pendências encerradas em 30 dias.
+3. Abrir `http://sgr-m.test/indicadores/historico`.
+4. Conferir gráficos mensais, motivos e comparação I/J/L.
+5. Filtrar por frota I e confirmar que cards e gráficos refletem somente I.
+6. Filtrar por defeito e por intervalo de datas; conferir totais e distribuição.
+7. Clicar em **Exportar PDF**; na nova aba, selecionar **Imprimir / Salvar como PDF**, escolher destino **Salvar como PDF** e confirmar legibilidade e filtros.
+8. Conferir que perfis administrador, gestor e técnico visualizam ambas as abas; visitantes são redirecionados ao login.
+9. Executar o seeder novamente e confirmar que não foram adicionadas duplicidades.
 
 ## 7. Testes, evidências e limitações
 
-Os cinco testes Feature foram criados para validar autenticação, agregações de instalações e condições, ocorrências versus equipamentos distintos, filtros de retirada/frota e rejeição de filtros inválidos.
+Os testes anteriores do dashboard foram validados pelo usuário no Laragon. Os testes e a apresentação desta evolução **ainda precisam ser executados e confirmados**.
 
-**Estado:** o usuário confirmou a aprovação dos testes do Módulo 05, integrado à `develop`. Os testes do Módulo 06 ainda precisam ser executados localmente.
+Limitações: o PDF é exportado pelo recurso de impressão do navegador, **não por um serviço que entrega diretamente um PDF pronto**. O histórico contém registros artificiais identificados e não serve como evidência operacional. Os gráficos mensais têm janela fixa de seis meses, enquanto os totais podem abranger intervalos maiores. Não existe ainda trilha de importação/auditoria dos dados sintéticos por usuário.
 
-**Limitações:** esta versão não gera gráficos temporais, exportações, séries históricas consolidadas nem captura do estado anterior dos indicadores. O filtro de datas não tenta reconstruir a condição histórica. O volume de trens é referente a cadastro, não necessariamente a trens operacionais.
+## 8. Conceitos acadêmicos
 
-## 8. Conceitos acadêmicos e apresentação
+- **Separação de responsabilidades (MVC + Service):** cálculo, filtros e visualização desacoplados.
+- **Modelagem relacional:** instalações retiradas, motivos categorizados e hierarquia de frota.
+- **Consultas analíticas:** `COUNT`, `GROUP BY`, agrupamentos temporais e múltiplas dimensões.
+- **Reutilização:** mesmos gráficos nos relatórios de tela e impressão.
+- **Integridade e segurança:** restrições de acesso, validação e geração sintética sem alterações nas instalações atuais.
+- **Testes de integração:** dados de entrada controlados e assertivas sobre agregações.
+- **Usabilidade:** distinção visual entre situação atual e eventos históricos.
 
-- **Integração incremental:** indicadores derivados das tabelas construídas em entregas anteriores.
-- **Separação de responsabilidades:** controller, serviço de domínio e view independentes.
-- **SQL relacional:** `JOIN`, agregações e filtros.
-- **Consistência:** distinção entre peças instaladas, históricos de retirada e ocorrências abertas.
-- **Rastreabilidade:** contagem de substituições por registro de retirada.
-- **Usabilidade:** filtros, cards, cores e legendas objetivas.
-- **Testes de integração:** valores de indicadores comparados com dados de teste controlados.
-
-**Resumo para apresentar:** “O dashboard reúne, em uma única visão, a quantidade de equipamentos instalados, as ocorrências técnicas, as condições medidas e o histórico de substituições. Os filtros distinguem a situação atual da frota dos eventos registrados em um período.”
+**Resumo para apresentar:** “O dashboard separa a situação atual da frota do histórico de movimentações, visualiza séries mensais e distribuição das retiradas por motivo e frota, permite filtros e exportação por PDF e utiliza uma carga acadêmica fictícia identificada e isolada do parque instalado.”
