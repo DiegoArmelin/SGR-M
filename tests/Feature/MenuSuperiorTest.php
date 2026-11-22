@@ -68,4 +68,29 @@ class MenuSuperiorTest extends TestCase
                 ->assertSee('Consulta por número de série');
         }
     }
+    /** Atalhos administrativos são exibidos apenas na central do administrador. */
+    public function test_home_apresenta_cards_administrativos_apenas_ao_administrador(): void
+    {
+        $admin = User::factory()->create(['perfil' => 'administrador']);
+        $this->actingAs($admin)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Cadastro de frotas')
+            ->assertSee('Cadastro de trens')
+            ->assertSee('Atualização por CSV')
+            ->assertSee(route('importacoes.periodicidade.create'));
+
+        foreach (['gestor', 'tecnico'] as $perfil) {
+            $usuario = User::factory()->create(['perfil' => $perfil]);
+            $this->actingAs($usuario)
+                ->get(route('dashboard'))
+                ->assertOk()
+                ->assertDontSee('Cadastro de frotas')
+                ->assertDontSee('Cadastro de trens')
+                ->assertDontSee('Atualização por CSV')
+                ->assertSee('Indicadores gerenciais')
+                ->assertSee('Registrar pendência');
+        }
+    }
+
 }
