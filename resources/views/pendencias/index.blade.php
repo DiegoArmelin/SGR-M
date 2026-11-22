@@ -31,7 +31,7 @@
 
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;text-align:left">
         <thead><tr style="border-bottom:2px solid #cbd5e1">
-            <th style="padding:10px">Equipamento / série</th><th>Descrição</th><th>Prioridade</th><th>Situação</th><th>Registro</th><th>Ações</th>
+            <th style="padding:10px">Posição de origem</th><th>Equipamento / série</th><th>Descrição</th><th>Prioridade</th><th>Situação</th><th>Registro</th><th>Ações</th>
         </tr></thead>
         <tbody>
         @forelse($pendencias as $pendencia)
@@ -42,7 +42,17 @@
                 $prioridades = ['critica'=>'Crítica','alta'=>'Alta','media'=>'Média','baixa'=>'Baixa'];
             @endphp
             <tr style="border-bottom:1px solid #e2e8f0">
-                <td style="padding:10px"><strong>{{ $tipo }}</strong><div>{{ $serie }}</div></td>
+                <td style="padding:10px">
+                    @if($pendencia->eixo)
+                        {{-- A posição é histórica: permanece ligada à ocorrência depois de uma troca. --}}
+                        Frota {{ $pendencia->eixo->carro->trem->frota->codigo }}
+                        <div>Trem {{ $pendencia->eixo->carro->trem->codigo }}</div>
+                        <div>Carro {{ $pendencia->eixo->carro->codigo }} — Eixo {{ $pendencia->eixo->numero }}</div>
+                    @else
+                        <small>Não registrada (cadastro anterior)</small>
+                    @endif
+                </td>
+                <td><strong>{{ $tipo }}</strong><div>{{ $serie }}</div></td>
                 <td>{{ $pendencia->descricao }}</td>
                 <td>{{ $prioridades[$pendencia->prioridade] ?? $pendencia->prioridade }}</td>
                 <td>{{ $pendencia->situacao === 'aberta' ? 'Aberta' : 'Resolvida' }}</td>
@@ -62,7 +72,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="6" style="padding:16px">Nenhuma pendência encontrada.</td></tr>
+            <tr><td colspan="7" style="padding:16px">Nenhuma pendência encontrada.</td></tr>
         @endforelse
         </tbody>
     </table></div>
