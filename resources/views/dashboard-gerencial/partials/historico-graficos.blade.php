@@ -2,8 +2,6 @@
     $maxMes = max(1, ...array_map(fn ($mes) => max($mes['rodeiro'], $mes['motor']), $dados['meses']));
     $maxFrota = max(1, ...array_map(fn ($v) => $v['rodeiro']+$v['motor'], array_values($dados['frotas'] ?: [['rodeiro'=>0,'motor'=>0]])));
     $cores = ['#2563eb','#ea580c','#16a34a','#7c3aed','#dc2626','#0891b2','#ca8a04','#64748b','#be185d','#0f766e'];
-    $totalMotivos = array_sum($dados['motivos']);
-    $acumulado = 0;
 @endphp
 
 <section class="hg-section">
@@ -26,39 +24,50 @@
 </section>
 
 <section class="hg-section">
-    <h2>Motivos das substituições</h2>
-    <p class="hg-muted">Distribuição dos motivos no período filtrado (rodeiros e motores).</p>
-    <div class="hg-donut-layout">
-        <svg viewBox="0 0 240 240" class="hg-donut" role="img" aria-label="Gráfico de rosca com distribuição percentual dos motivos">
-            <circle cx="120" cy="120" r="78" stroke="#e2e8f0" stroke-width="34" fill="none"/>
-            @foreach($dados['motivos'] as $motivo => $n)
-                @php
-                    $parte = $totalMotivos > 0 ? ($n/$totalMotivos)*100 : 0;
-                    $indice = $loop->index;
-                    $cor = $cores[$indice % count($cores)];
-                @endphp
-                <circle cx="120" cy="120" r="78" fill="none" stroke="{{ $cor }}" stroke-width="34"
-                    stroke-dasharray="{{ round($parte*4.90088,3) }} {{ round((100-$parte)*4.90088,3) }}"
-                    stroke-dashoffset="{{ round(-$acumulado*4.90088,3) }}"
-                    transform="rotate(-90 120 120)">
-                    <title>{{ $motivo }}: {{ $n }} ({{ number_format($parte,1,',','.') }}%)</title>
-                </circle>
-                @php $acumulado += $parte; @endphp
-            @endforeach
-            <text x="120" y="113" text-anchor="middle" font-size="26" font-weight="700" fill="#17365d">{{ $totalMotivos }}</text>
-            <text x="120" y="132" text-anchor="middle" font-size="12" fill="#475569">substituições</text>
-        </svg>
-        <div class="hg-motivos">
-            @forelse($dados['motivos'] as $motivo => $n)
-                <div class="hg-motivo-item">
-                    <span class="hg-dot" style="background:{{ $cores[$loop->index % count($cores)] }}"></span>
-                    <span>{{ $motivo }}</span>
-                    <strong>{{ $n }} · {{ $totalMotivos ? number_format(100*$n/$totalMotivos,1,',','.') : '0,0' }}%</strong>
+    <h2>Motivos das substituições — Rodeiros e Motores</h2>
+    <p class="hg-muted">Distribuição individual por tipo, respeitando os filtros aplicados. Um motivo selecionado de rodeiro pode deixar a rosca de motores sem registros.</p>
+    <div class="hg-donuts-two">
+        @foreach(['rodeiro'=>'Rodeiros','motor'=>'Motores'] as $tipo=>$titulo)
+            @php
+                $motivosTipo = $dados['motivos'][$tipo] ?? [];
+                $totalTipo = array_sum($motivosTipo);
+                $acumulado = 0;
+            @endphp
+            <div class="hg-donut-card">
+                <h3>{{ $titulo }}</h3>
+                <div class="hg-donut-single">
+                    <svg viewBox="0 0 240 240" class="hg-donut" role="img" aria-label="Gráfico de rosca dos motivos de {{ strtolower($titulo) }}">
+                        <circle cx="120" cy="120" r="78" stroke="#e2e8f0" stroke-width="34" fill="none"/>
+                        @foreach($motivosTipo as $motivo=>$quantidade)
+                            @php
+                                $parte = $totalTipo > 0 ? 100*$quantidade/$totalTipo : 0;
+                                $cor = $cores[$loop->index % count($cores)];
+                            @endphp
+                            <circle cx="120" cy="120" r="78" fill="none" stroke="{{ $cor }}" stroke-width="34"
+                                stroke-dasharray="{{ round($parte*4.90088,3) }} {{ round((100-$parte)*4.90088,3) }}"
+                                stroke-dashoffset="{{ round(-$acumulado*4.90088,3) }}"
+                                transform="rotate(-90 120 120)">
+                                <title>{{ $motivo }}: {{ $quantidade }} ({{ number_format($parte,1,',','.') }}%)</title>
+                            </circle>
+                            @php $acumulado += $parte; @endphp
+                        @endforeach
+                        <text x="120" y="113" text-anchor="middle" font-size="26" font-weight="700" fill="#17365d">{{ $totalTipo }}</text>
+                        <text x="120" y="132" text-anchor="middle" font-size="12" fill="#475569">substituições</text>
+                    </svg>
+                    <div class="hg-motivos">
+                        @forelse($motivosTipo as $motivo=>$quantidade)
+                            <div class="hg-motivo-item">
+                                <span class="hg-dot" style="background:{{ $cores[$loop->index % count($cores)] }}"></span>
+                                <span>{{ $motivo }}</span>
+                                <strong>{{ $quantidade }} · {{ number_format(100*$quantidade/max(1,$totalTipo),1,',','.') }}%</strong>
+                            </div>
+                        @empty
+                            <p class="hg-muted">Nenhuma substituição deste tipo no período.</p>
+                        @endforelse
+                    </div>
                 </div>
-            @empty
-                <p>Nenhuma substituição no período selecionado.</p>
-            @endforelse
-        </div>
+            </div>
+        @endforeach
     </div>
 </section>
 
