@@ -1,173 +1,112 @@
-# SGR-M — Relatório Técnico de Desenvolvimento
+# SGR-M — Entrega 01: Modelagem inicial do banco de dados
 
-**Entrega 01 — Modelagem Inicial do Banco de Dados**
-
-**Projeto:** Sistema de Gestão de Rodeiros e Motores (SGR-M)  
+**Projeto:** Sistema de Gestão de Rodeiros e Motores (SGR-M) — Fatec São Paulo  
 **Disciplina:** Laboratório de Engenharia de Software  
-**Instituição:** Fatec São Paulo  
-**Grupo:** 11  
-**Data:** 02/11/2026  
-**Branch:** `feature/modelagem-banco`  
-**Situação:** Implementação inicial concluída e testes manuais de integridade realizados.
+**Entrega:** 01 — Modelagem inicial do banco de dados  
+**Data original:** 02/11/2026  
+**Branch original:** `feature/modelagem-banco`  
+**Situação:** modelagem concluída e testes manuais relatados; entrega posteriormente integrada ao histórico do repositório.
 
-## 1. Objetivo da entrega
+> **Registro histórico:** o documento original identificava **Grupo 11**, enquanto os documentos posteriores e o README identificam **Grupo 10**. Esta diferença cadastral foi preservada como observação para conferência dos integrantes; não foi corrigida por suposição.
 
-Implementar a estrutura inicial do banco de dados do SGR-M, permitindo o cadastro hierárquico dos trens, a identificação individual de rodeiros e motores e o armazenamento do histórico de instalações e substituições.
+## 1. Objetivo
 
-A modelagem busca garantir a rastreabilidade dos equipamentos por número de série e impedir inconsistências relacionadas à instalação simultânea de um mesmo equipamento em diferentes posições.
+Criar a base relacional para organizar a estrutura **Frota → Trem → Carro → Eixo**, identificar rodeiros e motores por número de série e registrar instalações e retiradas sem perder o histórico. O foco é garantir integridade e rastreabilidade **na camada de persistência**, antes da construção das telas e dos serviços de movimentação.
 
-## 2. Tecnologias utilizadas
+## 2. Regras de negócio e estrutura dos dados
 
-- **Framework:** Laravel 12.70.2
-- **Linguagem:** PHP 8.3.28
-- **Banco de dados:** MySQL 8.4.3
-- **Ambiente local:** Laragon
-- **ORM:** Eloquent
-- **Controle de versões:** Git e GitHub
-- **Banco da aplicação:** `sgr_m`
+| Tabela | Finalidade | Regra principal |
+|---|---|---|
+| `frotas` | Identifica uma frota | Código único |
+| `trens` | Associa um trem a uma frota | Um trem pertence a uma frota |
+| `carros` | Identifica os carros de um trem | Código e posição únicos dentro do trem |
+| `eixos` | Define posições de eixo por carro | Número do eixo único dentro do carro |
+| `rodeiros` | Cadastro por número de série | Série única; condição LR/LO e periodicidade |
+| `motores` | Cadastro por número de série | Série única |
+| `instalacoes_rodeiros` | Histórico de vínculo rodeiro–eixo | Exclusividade da instalação ativa |
+| `instalacoes_motores` | Histórico de vínculo motor–eixo | Exclusividade da instalação ativa |
 
-## 3. Estrutura do banco de dados
+**Relacionamentos:** uma frota possui vários trens; um trem possui vários carros; cada carro possui vários eixos. Rodeiros e motores não pertencem permanentemente a um eixo: as tabelas de instalação representam o vínculo e suas datas.
 
-Foram implementadas oito tabelas específicas do SGR-M.
+**Instalação ativa:** `data_retirada IS NULL`. Quando a retirada é informada, a instalação torna-se histórica, mas seu registro é mantido.
 
-| Tabela | Finalidade |
+**Restrições de exclusividade:** os índices `uk_inst_rod_eixo_ativo`, `uk_inst_rod_rodeiro_ativo`, `uk_inst_mot_eixo_ativo` e `uk_inst_mot_motor_ativo` impedem tanto a duplicação do equipamento ativo quanto a ocupação simultânea da mesma posição por dois equipamentos do mesmo tipo.
+
+**Condições do rodeiro:** número de série, diâmetros LR/LO, periodicidade percentual, status, data de atualização e observações; o menor diâmetro pode ser obtido por um atributo calculado no Model. Não foi implementado nessa entrega um serviço de decisão automática de manutenção.
+
+## 3. Arquivos e responsabilidades
+
+| Arquivo | Responsabilidade |
 |---|---|
-| `frotas` | Cadastro das frotas ferroviárias |
-| `trens` | Cadastro dos trens vinculados às frotas |
-| `carros` | Cadastro dos carros que compõem os trens |
-| `eixos` | Identificação das posições de eixo de cada carro |
-| `rodeiros` | Cadastro individual dos rodeiros por número de série |
-| `motores` | Cadastro individual dos motores por número de série |
-| `instalacoes_rodeiros` | Histórico das instalações e retiradas dos rodeiros |
-| `instalacoes_motores` | Histórico das instalações e retiradas dos motores |
+| `database/migrations/2026_11_02_151533_create_frotas_table.php` | Criação da tabela de frotas |
+| `database/migrations/2026_11_02_151541_create_trems_table.php` | Trens e chave estrangeira para frotas |
+| `database/migrations/2026_11_02_151548_create_carros_table.php` | Carros e unicidade de código/posição por trem |
+| `database/migrations/2026_11_02_151554_create_eixos_table.php` | Eixos e unicidade de número por carro |
+| `database/migrations/2026_11_02_151603_create_rodeiros_table.php` | Cadastro e atributos de condição dos rodeiros |
+| `database/migrations/2026_11_02_151610_create_motors_table.php` | Cadastro dos motores |
+| `database/migrations/2026_11_02_153616_create_instalacao_rodeiros_table.php` | Histórico de instalações e índices de exclusividade de rodeiros |
+| `database/migrations/2026_11_02_154221_create_instalacao_motors_table.php` | Histórico de instalações e índices de exclusividade de motores |
+| `app/Models/Frota.php`, `Trem.php`, `Carro.php`, `Eixo.php` | Representação Eloquent da hierarquia |
+| `app/Models/Rodeiro.php`, `Motor.php` | Equipamentos, atributos e relações com instalações |
+| `app/Models/InstalacaoRodeiro.php`, `InstalacaoMotor.php` | Registros históricos dos vínculos equipamento–eixo |
 
-As tabelas padrão do Laravel, como `users`, `cache` e `jobs`, também foram criadas pelas migrations iniciais do framework.
+**Evolução posterior:** na Entrega 03, a expressão das colunas geradas nas duas migrations de instalações passou de `IF(...)` para `CASE WHEN ... THEN ... ELSE NULL END`, para compatibilidade com SQLite nos testes. A finalidade das restrições foi preservada. Essa alteração **não fazia parte da entrega original**.
 
-## 4. Relacionamentos implementados
+## 4. Explicação dos principais recursos de programação
 
-A hierarquia principal é:
+- **`up()` e `down()` nas migrations:** criam e removem estruturas do banco, respectivamente, permitindo controlar a evolução do esquema.
+- **`foreignId()->constrained()`:** configura a chave estrangeira e faz o banco validar os vínculos.
+- **`restrictOnDelete()`:** impede exclusão de um registro pai quando a regra de integridade exige manter dependentes.
+- **`unique()`:** cria restrições de unicidade para identificadores e posições.
+- **`storedAs()`:** cria coluna calculada usada na exclusividade de instalações ativas.
+- **`belongsTo()` / `hasMany()`:** métodos Eloquent que representam relações de muitos-para-um e um-para-muitos.
+- **`fillable` e `casts()`:** definem campos permitidos em preenchimento em massa e conversões automáticas de valores.
+- **`getMenorDiametroAttribute()`:** calcula o menor valor disponível entre os diâmetros LR e LO, sem persistir esse resultado em uma coluna separada.
 
-**Frota → Trem → Carro → Eixo**
+## 5. Procedimento de execução no Laragon
 
-Cada frota pode possuir vários trens. Cada trem pode possuir vários carros e cada carro pode possuir várias posições de eixo.
-
-Os rodeiros e motores são cadastrados independentemente de sua posição atual.
-
-As tabelas `instalacoes_rodeiros` e `instalacoes_motores` estabelecem os vínculos entre equipamentos e posições, preservando o histórico de suas movimentações.
-
-## 5. Regras de integridade implementadas
-
-### 5.1. Identificação individual
-
-Cada rodeiro e motor possui um número de série único, protegido por restrição de unicidade no banco de dados.
-
-### 5.2. Exclusividade das instalações ativas
-
-O sistema de dados impede:
-
-- Dois rodeiros ativos em uma mesma posição de eixo.
-- Um rodeiro ativo em duas posições diferentes.
-- Dois motores ativos em uma mesma posição de eixo.
-- Um motor ativo em duas posições diferentes.
-
-### 5.3. Preservação do histórico
-
-Cada instalação possui uma data de instalação e uma data de retirada opcional.
-
-Uma instalação sem data de retirada é considerada ativa.
-
-Ao registrar a retirada, a instalação permanece armazenada para consultas históricas, e a posição pode receber outro equipamento.
-
-### 5.4. Restrições no MySQL
-
-As tabelas de instalações utilizam colunas geradas e índices únicos para controlar a exclusividade das instalações ativas.
-
-Foram criadas as seguintes restrições:
-
-- `uk_inst_rod_eixo_ativo`
-- `uk_inst_rod_rodeiro_ativo`
-- `uk_inst_mot_eixo_ativo`
-- `uk_inst_mot_motor_ativo`
-
-Essas restrições são aplicadas diretamente pelo MySQL, complementando as futuras validações da aplicação.
-
-## 6. Informações de condição dos rodeiros
-
-O cadastro de rodeiros contempla:
-
-- Número de série.
-- Diâmetro LR.
-- Diâmetro LO.
-- Periodicidade percentual.
-- Situação cadastral.
-- Data de atualização das condições.
-- Observações.
-
-O Model `Rodeiro` também possui um atributo calculado para consultar o menor diâmetro registrado entre LR e LO.
-
-Esses dados serão utilizados futuramente pelo módulo de priorização, que aplicará as regras de negócio estabelecidas na especificação do SGR-M.
-
-## 7. Testes realizados
-
-Foram realizados testes manuais por meio do Laravel Tinker, utilizando registros fictícios.
-
-| Teste | Resultado |
-|---|---|
-| Cadastro de frota | Aprovado |
-| Cadastro de trem vinculado à frota | Aprovado |
-| Cadastro de carro vinculado ao trem | Aprovado |
-| Cadastro de eixo vinculado ao carro | Aprovado |
-| Cadastro de rodeiros por número de série | Aprovado |
-| Instalação inicial de rodeiro | Aprovado |
-| Bloqueio de dois rodeiros ativos no mesmo eixo | Aprovado |
-| Retirada e substituição de rodeiro | Aprovado |
-| Preservação do histórico de instalações | Aprovado |
-| Bloqueio do mesmo rodeiro em dois eixos | Aprovado |
-| Testes equivalentes de instalação e substituição de motores | Aprovado, conforme execução manual |
-
-Os testes confirmaram o comportamento esperado das principais restrições de exclusividade e da preservação dos registros históricos.
-
-A implementação ainda não possui uma suíte de testes automatizados.
-
-## 8. Limitações e funcionalidades pendentes
-
-Esta entrega contempla a modelagem inicial e os relacionamentos básicos.
-
-Ainda serão necessários:
-
-- Desenvolvimento das telas de cadastro e consulta.
-- Autenticação e autorização por perfis.
-- Implementação dos serviços de instalação e substituição.
-- Atualização consistente do status dos equipamentos.
-- Validação das datas e das situações cadastrais.
-- Transações para movimentações de equipamentos.
-- Cadastro e acompanhamento de pendências.
-- Importação dos arquivos CSV.
-- Ranking de priorização e indicadores.
-- Testes automatizados e testes de integração.
-- Validação das regras de negócio com os responsáveis pela manutenção.
-
-As restrições atualmente implementadas não substituem os procedimentos operacionais de segurança ou a avaliação técnica dos profissionais.
-
-## 9. Orientações para os integrantes
-
-Após a integração desta entrega à branch `develop`, cada integrante deverá clonar ou atualizar o repositório, configurar seu próprio arquivo `.env`, criar o banco MySQL local e executar:
+Para instalação de um **banco novo e vazio**, configurar o arquivo `.env`, instalar as dependências e executar:
 
 ```bash
 composer install
 npm install
 php artisan key:generate
 php artisan migrate
+php artisan migrate:status
 ```
 
-O arquivo `.env` deverá ser criado localmente a partir do `.env.example`, com as configurações de conexão apropriadas.
+O nome do banco utilizado na documentação original é `sgr_m`. Não publicar credenciais ou o arquivo `.env`.
 
-Os dados fictícios utilizados nos testes manuais não são compartilhados automaticamente pelo GitHub. Os seeders reproduzíveis serão desenvolvidos em uma etapa posterior.
+**Em banco existente, não executar `migrate:fresh`: esse comando exclui as tabelas e seus dados.** A modelagem já está presente no ambiente atual do projeto.
 
-## 10. Conclusão
+## 6. Verificação no banco e no Tinker
 
-A primeira etapa de modelagem do SGR-M estabeleceu a estrutura fundamental para o controle de equipamentos ferroviários, incluindo identificação por número de série, relacionamentos hierárquicos e histórico de instalações.
+Exemplos de inspeção **somente leitura** no ambiente atual:
 
-Os testes manuais demonstraram o funcionamento das principais restrições de integridade relacionadas à exclusividade dos equipamentos.
+```php
+Schema::hasTable('frotas');
+Schema::hasTable('instalacoes_rodeiros');
+App\Models\Frota::count();
+App\Models\Trem::with('frota')->first();
+App\Models\Rodeiro::first()?->numero_serie;
+```
 
-Essa entrega fornece a base para o desenvolvimento colaborativo dos módulos de gestão de pendências, movimentação, importação CSV, priorização e dashboard.
+Para examinar índices e colunas geradas, utilizar `SHOW CREATE TABLE instalacoes_rodeiros;` e `SHOW CREATE TABLE instalacoes_motores;` no MySQL.
+
+## 7. Testes, evidências e limitações
+
+**Evidência histórica:** o documento original relata testes manuais aprovados no Tinker para criação dos registros hierárquicos, cadastro de rodeiros, instalação, rejeição de equipamentos duplicados em posições ativas, retirada/substituição e preservação do histórico. Relata também verificações equivalentes para motores.
+
+**Limites da evidência:** não havia suíte automatizada específica desta entrega na época. Os testes posteriores do Seeder e da consulta pertencem à Entrega 03 e não devem ser apresentados como testes originalmente executados na Entrega 01. Serviços transacionais de movimentação, manutenção de status, importação CSV e priorização ainda requerem implementação.
+
+## 8. Conceitos acadêmicos aplicados e pontos para apresentação
+
+- **Modelagem relacional:** entidades, chaves primárias, chaves estrangeiras e cardinalidades.
+- **Integridade referencial:** vínculos consistentes e impedimento de exclusões inadequadas.
+- **Rastreabilidade:** separação entre identidade do equipamento e posição de instalação.
+- **Histórico temporal:** instalações ativas e encerradas sem apagar movimentações passadas.
+- **ORM Eloquent:** representação de tabelas e relações como objetos e métodos PHP.
+- **Evolução incremental do banco:** migrations versionadas no Git.
+- **Verificação e validação:** testes manuais da estrutura e planejamento de testes automatizados.
+
+**Resumo para apresentar:** “A Entrega 01 estruturou oito tabelas do domínio, associou a hierarquia ferroviária aos equipamentos e incorporou restrições para evitar instalações simultâneas inconsistentes, preservando o histórico de cada movimentação.”

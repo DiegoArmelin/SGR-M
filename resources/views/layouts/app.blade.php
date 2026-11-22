@@ -222,6 +222,11 @@
             <div class="brand">SGR-M</div>
 
             <div class="navbar-right">
+                <a href="{{ route('frotas.index') }}" style="color:white; text-decoration:underline;">Frotas</a>
+                <a href="{{ route('trens.index') }}" style="color:white; text-decoration:underline;">Trens</a>
+                <a href="{{ route('equipamentos.hierarquica') }}" style="color:white; text-decoration:underline;">Consulta hierárquica</a>
+                <a href="{{ route('pendencias.index') }}" style="color:white; text-decoration:underline;">Pendências</a>
+                <a href="{{ route('equipamentos.index') }}" style="color:white; text-decoration:underline;">Consultar equipamentos</a>
                 <div class="user-info">
                     {{ auth()->user()->name }}
                     |
