@@ -27,7 +27,7 @@ class ImportacaoPeriodicidadeCsvService
     ];
 
     /**
-     * @return array{linhas:int,atualizados:int,ignorados_data:int,ignorados_posicao:int}
+     * @return array{linhas:int,atualizados:int,ignorados_data:int,ignorados_posicao:int,detalhes:array}
      */
     public function importar(UploadedFile $arquivo): array
     {
@@ -149,9 +149,27 @@ class ImportacaoPeriodicidadeCsvService
                     'atualizados' => 0,
                     'ignorados_data' => 0,
                     'ignorados_posicao' => 0,
+                    'detalhes' => [],
                 ];
 
-                foreach ($dados as $linha) {
+                foreach ($dados as $indice => $linha) {
+                    // O relatório registra cada linha do CSV com sua posição e
+                    // resultado final; é gerado somente quando o lote conclui.
+                    $detalhe = [
+                        'linha' => $indice + 2,
+                        'frota' => $linha['frota'],
+                        'trem' => $linha['trem'],
+                        'carro' => $linha['carro'],
+                        'posicao' => $linha['posicao'],
+                        'serie_rodeiro' => $linha['serie_rodeiro'],
+                        'diametro_lr' => $linha['diametro_lr'],
+                        'diametro_lo' => $linha['diametro_lo'],
+                        'periodicidade' => $linha['periodicidade'],
+                        'data_atualizacao' => $linha['data_atualizacao']->format('Y-m-d H:i:s'),
+                        'status' => 'atualizado',
+                        'motivo' => 'Condição atualizada com sucesso.',
+                    ];
+
                     $eixo = Eixo::query()
                         ->where('numero', (int) $linha['posicao'])
                         ->whereHas('carro', fn ($q) => $q
@@ -186,12 +204,23 @@ class ImportacaoPeriodicidadeCsvService
                     // não recebe dados dessa posição; mantém-se o histórico.
                     if (!$instalacao || $instalacao->rodeiro_id !== $rodeiro->id) {
                         $resultado['ignorados_posicao']++;
+                        $detalhe['status'] = 'ignorado';
+                        $detalhe['motivo'] = !$instalacao
+                            ? 'Nenhum rodeiro instalado atualmente nesta posição.'
+                            : 'Série divergente: o rodeiro atualmente instalado é '
+                                . (Rodeiro::query()->whereKey($instalacao->rodeiro_id)->value('numero_serie') ?? 'não identificado')
+                                . '.';
+                        $resultado['detalhes'][] = $detalhe;
                         continue;
                     }
 
                     if ($rodeiro->data_atualizacao_condicao
                         && !$linha['data_atualizacao']->greaterThan($rodeiro->data_atualizacao_condicao)) {
                         $resultado['ignorados_data']++;
+                        $detalhe['status'] = 'ignorado';
+                        $detalhe['motivo'] = 'Data do CSV igual ou anterior à última atualização ('
+                            . $rodeiro->data_atualizacao_condicao->format('d/m/Y H:i:s') . ').';
+                        $resultado['detalhes'][] = $detalhe;
                         continue;
                     }
 
@@ -202,6 +231,7 @@ class ImportacaoPeriodicidadeCsvService
                         'data_atualizacao_condicao' => $linha['data_atualizacao'],
                     ]);
                     $resultado['atualizados']++;
+                    $resultado['detalhes'][] = $detalhe;
                 }
 
                 return $resultado;
