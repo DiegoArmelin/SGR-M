@@ -8,6 +8,7 @@ use App\Models\Frota;
 use App\Models\InstalacaoMotor;
 use App\Models\InstalacaoRodeiro;
 use App\Models\Motor;
+use App\Models\MotivoRetirada;
 use App\Models\Trem;
 use App\Models\PendenciaEquipamento;
 use App\Models\Rodeiro;
@@ -33,7 +34,7 @@ class PendenciaEquipamentoController extends Controller
         ]);
 
         $pendencias = PendenciaEquipamento::query()
-            ->with(['rodeiro', 'motor', 'autor', 'eixo.carro.trem.frota'])
+            ->with(['rodeiro', 'motor', 'motivoRetirada', 'autor', 'eixo.carro.trem.frota'])
             ->when($filtros['situacao'] ?? null, fn ($q, $v) => $q->where('situacao', $v))
             ->when(($filtros['tipo'] ?? '') === 'rodeiro', fn ($q) => $q->whereNotNull('rodeiro_id'))
             ->when(($filtros['tipo'] ?? '') === 'motor', fn ($q) => $q->whereNotNull('motor_id'))
@@ -106,9 +107,17 @@ class PendenciaEquipamentoController extends Controller
             $equipamentoInstalado = $instalacao?->{$relacao};
         }
 
+        // Reutiliza o catálogo de defeitos e motivos, limitado ao tipo e a ativos.
+        $motivos = MotivoRetirada::query()
+            ->where('tipo_equipamento', $tipo)
+            ->where('ativo', true)
+            ->orderBy('descricao')
+            ->get();
+
         return view('pendencias.create', compact(
             'frotas', 'trens', 'carros', 'eixos', 'eixoSelecionado',
-            'equipamentoInstalado', 'frotaId', 'tremId', 'carroId', 'eixoId', 'tipo'
+            'equipamentoInstalado', 'frotaId', 'tremId', 'carroId', 'eixoId', 'tipo',
+            'motivos'
         ));
     }
 
@@ -127,9 +136,25 @@ class PendenciaEquipamentoController extends Controller
             'carro_id' => ['required', 'integer', 'exists:carros,id'],
             'eixo_id' => ['required', 'integer', 'exists:eixos,id'],
             'tipo' => ['required', Rule::in(['rodeiro', 'motor'])],
-            'descricao' => ['required', 'string', 'max:500'],
+            'motivo_retirada_id' => ['required', 'integer', 'exists:motivos_retirada,id'],
+            'descricao' => ['nullable', 'string', 'max:500'],
+            'observacoes' => ['nullable', 'string', 'max:2000'],
             'prioridade' => ['required', Rule::in(['critica', 'alta', 'media', 'baixa'])],
         ]);
+
+        // O ID precisa pertencer ao catálogo ativo do mesmo tipo de equipamento.
+        // Validar novamente no POST evita utilizar opções alteradas manualmente.
+        $motivo = MotivoRetirada::query()
+            ->whereKey($dados['motivo_retirada_id'])
+            ->where('tipo_equipamento', $dados['tipo'])
+            ->where('ativo', true)
+            ->first();
+
+        if (!$motivo) {
+            throw ValidationException::withMessages([
+                'motivo_retirada_id' => 'Selecione um motivo ativo do tipo de equipamento correto.',
+            ]);
+        }
 
         // Confere pertencimento dos quatro níveis, impedindo associações falsas.
         $eixo = Eixo::query()->whereKey($dados['eixo_id'])
@@ -148,7 +173,7 @@ class PendenciaEquipamentoController extends Controller
         // Lê a instalação sob bloqueio e grava a pendência na mesma transação.
         // Assim, uma movimentação concorrente não deve mudar o vínculo no
         // intervalo entre consulta e criação da pendência.
-        DB::transaction(function () use ($dados, $eixo, $request): void {
+        DB::transaction(function () use ($dados, $eixo, $request, $motivo): void {
             Eixo::whereKey($eixo->id)->lockForUpdate()->firstOrFail();
 
             $tipo = $dados['tipo'];
@@ -169,7 +194,11 @@ class PendenciaEquipamentoController extends Controller
                 'eixo_id' => $eixo->id,
                 'rodeiro_id' => $tipo === 'rodeiro' ? $instalacao->{$fk} : null,
                 'motor_id' => $tipo === 'motor' ? $instalacao->{$fk} : null,
-                'descricao' => $dados['descricao'],
+                // O texto de descrição é mantido para compatibilidade com as
+                // pendências antigas; novas ocorrências usam o motivo do catálogo.
+                'motivo_retirada_id' => $motivo->id,
+                'descricao' => $motivo->descricao,
+                'observacoes' => $dados['observacoes'] ?? null,
                 'prioridade' => $dados['prioridade'],
                 'situacao' => 'aberta',
                 'registrado_por' => $request->user()->id,
