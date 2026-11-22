@@ -2,7 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Carro;
+use App\Models\Eixo;
+use App\Models\Frota;
+use App\Models\InstalacaoMotor;
+use App\Models\InstalacaoRodeiro;
 use App\Models\Motor;
+use App\Models\Trem;
 use App\Models\PendenciaEquipamento;
 use App\Models\Rodeiro;
 use Illuminate\Http\RedirectResponse;
@@ -27,7 +33,7 @@ class PendenciaEquipamentoController extends Controller
         ]);
 
         $pendencias = PendenciaEquipamento::query()
-            ->with(['rodeiro', 'motor', 'autor'])
+            ->with(['rodeiro', 'motor', 'autor', 'eixo.carro.trem.frota'])
             ->when($filtros['situacao'] ?? null, fn ($q, $v) => $q->where('situacao', $v))
             ->when(($filtros['tipo'] ?? '') === 'rodeiro', fn ($q) => $q->whereNotNull('rodeiro_id'))
             ->when(($filtros['tipo'] ?? '') === 'motor', fn ($q) => $q->whereNotNull('motor_id'))
@@ -39,50 +45,136 @@ class PendenciaEquipamentoController extends Controller
         return view('pendencias.index', compact('pendencias', 'filtros'));
     }
 
-    /** Formulário para selecionar o tipo, a série e a prioridade da pendência. */
+    /**
+     * Exibe seletores progressivos de frota, trem, carro e eixo.
+     *
+     * O formulário GET muda apenas os filtros; nenhum equipamento é alterado.
+     * As opções são sempre conferidas contra seus pais para evitar combinações
+     * inválidas de IDs (ex.: carro da frota J no trem I01).
+     */
     public function create(Request $request): View
     {
-        // A consulta de sugestões depende do tipo selecionado, evitando carregar
-        // simultaneamente as milhares de séries dos dois tipos de equipamento.
         $filtros = $request->validate([
+            'frota_id' => ['nullable', 'integer', 'exists:frotas,id'],
+            'trem_id' => ['nullable', 'integer', 'exists:trens,id'],
+            'carro_id' => ['nullable', 'integer', 'exists:carros,id'],
+            'eixo_id' => ['nullable', 'integer', 'exists:eixos,id'],
             'tipo' => ['nullable', Rule::in(['rodeiro', 'motor'])],
         ]);
-        $tipo = $filtros['tipo'] ?? 'rodeiro';
-        $modelo = $tipo === 'rodeiro' ? Rodeiro::class : Motor::class;
 
-        return view('pendencias.create', [
-            'tipo' => $tipo,
-            'series' => $modelo::orderBy('numero_serie')->pluck('numero_serie'),
-        ]);
+        $frotaId = $filtros['frota_id'] ?? null;
+        $tremId = $filtros['trem_id'] ?? null;
+        $carroId = $filtros['carro_id'] ?? null;
+        $eixoId = $filtros['eixo_id'] ?? null;
+        $tipo = $filtros['tipo'] ?? 'rodeiro';
+
+        if (($tremId && !$frotaId) || ($carroId && !$tremId)
+            || ($eixoId && !$carroId)) {
+            abort(404, 'Seleção hierárquica incompleta.');
+        }
+
+        $frotas = Frota::orderBy('codigo')->get();
+        $trens = $frotaId
+            ? Trem::where('frota_id', $frotaId)->orderBy('codigo')->get()
+            : collect();
+        $carros = collect();
+        $eixos = collect();
+        $eixoSelecionado = null;
+        $equipamentoInstalado = null;
+
+        if ($tremId) {
+            abort_unless($trens->contains('id', $tremId), 404);
+            $carros = Carro::where('trem_id', $tremId)->orderBy('posicao')->get();
+        }
+
+        if ($carroId) {
+            abort_unless($carros->contains('id', $carroId), 404);
+            $eixos = Eixo::where('carro_id', $carroId)->orderBy('numero')->get();
+        }
+
+        if ($eixoId) {
+            $eixoSelecionado = $eixos->firstWhere('id', $eixoId);
+            abort_unless($eixoSelecionado, 404);
+
+            // Consulta apenas a instalação atual, sem incluir equipamento retirado.
+            $instalacaoModel = $tipo === 'rodeiro'
+                ? InstalacaoRodeiro::class : InstalacaoMotor::class;
+            $relacao = $tipo === 'rodeiro' ? 'rodeiro' : 'motor';
+
+            $instalacao = $instalacaoModel::where('eixo_id', $eixoId)
+                ->whereNull('data_retirada')->with($relacao)->first();
+            $equipamentoInstalado = $instalacao?->{$relacao};
+        }
+
+        return view('pendencias.create', compact(
+            'frotas', 'trens', 'carros', 'eixos', 'eixoSelecionado',
+            'equipamentoInstalado', 'frotaId', 'tremId', 'carroId', 'eixoId', 'tipo'
+        ));
     }
 
-    /** Valida existência da série e grava a pendência vinculada ao equipamento. */
+    /**
+     * Identifica o equipamento pela posição escolhida no momento da gravação.
+     *
+     * IDs de frota, trem e carro são revalidados no servidor, não apenas na view.
+     * A pendência registra tanto a posição de origem quanto o equipamento atual,
+     * mantendo a rastreabilidade se o item for substituído futuramente.
+     */
     public function store(Request $request): RedirectResponse
     {
         $dados = $request->validate([
+            'frota_id' => ['required', 'integer', 'exists:frotas,id'],
+            'trem_id' => ['required', 'integer', 'exists:trens,id'],
+            'carro_id' => ['required', 'integer', 'exists:carros,id'],
+            'eixo_id' => ['required', 'integer', 'exists:eixos,id'],
             'tipo' => ['required', Rule::in(['rodeiro', 'motor'])],
-            'numero_serie' => ['required', 'string', 'max:50'],
             'descricao' => ['required', 'string', 'max:500'],
             'prioridade' => ['required', Rule::in(['critica', 'alta', 'media', 'baixa'])],
         ]);
 
-        $modelo = $dados['tipo'] === 'rodeiro' ? Rodeiro::class : Motor::class;
-        $equipamento = $modelo::where('numero_serie', trim($dados['numero_serie']))->first();
+        // Confere pertencimento dos quatro níveis, impedindo associações falsas.
+        $eixo = Eixo::query()->whereKey($dados['eixo_id'])
+            ->where('carro_id', $dados['carro_id'])
+            ->whereHas('carro', fn ($q) => $q
+                ->where('trem_id', $dados['trem_id'])
+                ->whereHas('trem', fn ($t) => $t->where('frota_id', $dados['frota_id'])))
+            ->first();
 
-        if (!$equipamento) {
+        if (!$eixo) {
             throw ValidationException::withMessages([
-                'numero_serie' => 'Número de série não cadastrado para o tipo selecionado.',
+                'eixo_id' => 'A posição selecionada não pertence à frota, trem e carro informados.',
             ]);
         }
 
-        PendenciaEquipamento::create([
-            'rodeiro_id' => $dados['tipo'] === 'rodeiro' ? $equipamento->id : null,
-            'motor_id' => $dados['tipo'] === 'motor' ? $equipamento->id : null,
-            'descricao' => $dados['descricao'],
-            'prioridade' => $dados['prioridade'],
-            'situacao' => 'aberta',
-            'registrado_por' => $request->user()->id,
-        ]);
+        // Lê a instalação sob bloqueio e grava a pendência na mesma transação.
+        // Assim, uma movimentação concorrente não deve mudar o vínculo no
+        // intervalo entre consulta e criação da pendência.
+        DB::transaction(function () use ($dados, $eixo, $request): void {
+            Eixo::whereKey($eixo->id)->lockForUpdate()->firstOrFail();
+
+            $tipo = $dados['tipo'];
+            $model = $tipo === 'rodeiro'
+                ? InstalacaoRodeiro::class : InstalacaoMotor::class;
+            $fk = $tipo === 'rodeiro' ? 'rodeiro_id' : 'motor_id';
+
+            $instalacao = $model::where('eixo_id', $eixo->id)
+                ->whereNull('data_retirada')->lockForUpdate()->first();
+
+            if (!$instalacao) {
+                throw ValidationException::withMessages([
+                    'eixo_id' => 'Não há equipamento deste tipo instalado nesta posição.',
+                ]);
+            }
+
+            PendenciaEquipamento::create([
+                'eixo_id' => $eixo->id,
+                'rodeiro_id' => $tipo === 'rodeiro' ? $instalacao->{$fk} : null,
+                'motor_id' => $tipo === 'motor' ? $instalacao->{$fk} : null,
+                'descricao' => $dados['descricao'],
+                'prioridade' => $dados['prioridade'],
+                'situacao' => 'aberta',
+                'registrado_por' => $request->user()->id,
+            ]);
+        }, 3);
 
         return redirect()->route('pendencias.index')
             ->with('success', 'Pendência registrada com sucesso.');
