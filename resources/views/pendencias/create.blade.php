@@ -94,9 +94,26 @@
                     <input type="hidden" name="carro_id" value="{{ $carroId }}">
                     <input type="hidden" name="eixo_id" value="{{ $eixoId }}">
                     <input type="hidden" name="tipo" value="{{ $tipo }}">
+                    {{-- Motivos são carregados do catálogo e filtrados por rodeiro/motor.
+                         O serviço confere a validade novamente no servidor. --}}
                     <div class="form-group">
-                        <label class="form-label" for="descricao">Descrição da pendência *</label>
-                        <textarea class="form-control" id="descricao" name="descricao" maxlength="500" rows="3" required>{{ old('descricao') }}</textarea>
+                        <label class="form-label" for="motivo_retirada_id">Motivo / defeito da pendência *</label>
+                        <select class="form-control" id="motivo_retirada_id" name="motivo_retirada_id" required>
+                            <option value="">Selecione um motivo</option>
+                            @foreach($motivos as $motivo)
+                                <option value="{{ $motivo->id }}" @selected(old('motivo_retirada_id') == $motivo->id)>
+                                    {{ $motivo->descricao }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @if($motivos->isEmpty())
+                            <small>Não há motivos ativos cadastrados para este tipo de equipamento.</small>
+                        @endif
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="observacoes">Observações complementares (opcional)</label>
+                        <textarea class="form-control" id="observacoes" name="observacoes" maxlength="2000" rows="3"
+                            placeholder="Informações adicionais sobre a ocorrência">{{ old('observacoes') }}</textarea>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="prioridade">Prioridade *</label>
