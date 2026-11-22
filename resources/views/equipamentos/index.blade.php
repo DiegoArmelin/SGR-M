@@ -3,6 +3,7 @@
 @section('title', 'Consulta de Equipamentos — SGR-M')
 
 @section('content')
+{{-- Consulta somente leitura: filtros GET, sem alterar dados do equipamento. --}}
 <main class="container">
     <div class="card">
         <h1 class="page-title">Consulta de equipamentos</h1>
@@ -48,6 +49,7 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {{-- Renderiza os registros da página ou mostra uma mensagem de lista vazia. --}}
                     @forelse ($equipamentos as $equipamento)
                         <tr style="border-bottom:1px solid #e2e8f0;">
                             <td style="padding:12px;">{{ $equipamento->numero_serie }}</td>
