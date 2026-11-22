@@ -51,18 +51,11 @@ Registro, consulta, filtragem e resolução de pendências técnicas de rodeiros
 
 Importação unificada de **periodicidade percentual, diâmetros LR e LO**, identificando frota, trem, carro, eixo e série em um único CSV. O sistema só atualiza condições com data posterior à última registrada, verifica a instalação ativa e executa alterações em transação. A importação disponibiliza relatório individual por equipamento, filtros de resultado e exportação em CSV. Acesso restrito ao administrador.
 
-### 4.4. Priorização de equipamentos — implementada (testes pendentes)
+### 4.4. Priorização de equipamentos — abas e rankings independentes (testes pendentes)
 
-O ranking seguirá a seguinte ordem de precedência:
+A visualização é separada nas abas **Rodeiros** e **Motores**. Na aba de rodeiros, aparecem três tabelas: pendências técnicas (crítica → alta → média → baixa), diâmetros abaixo de 745 mm (menor primeiro, incluindo card de críticos <= 742 mm) e periodicidade >= 100% (maior percentual primeiro). A aba de motores apresenta as pendências, pois não há medições LR/LO ou percentual de periodicidade para esse tipo.
 
-1. Pendências críticas.
-2. Pendências altas.
-3. Pendências médias.
-4. Pendências baixas.
-5. Rodeiros com periodicidade maior ou igual a 100%.
-6. Rodeiros com menor diâmetro LR/LO inferior a 745 mm.
-
-Esses limites são parâmetros acadêmicos e **não representam critérios operacionais oficiais**.
+Cada tabela apresenta os **10 primeiros registros** após seus próprios filtros de trem/carro, e a tabela de pendências também aceita filtro por prioridade. A seleção de uma tabela não altera as outras. Os limites são apenas parâmetros acadêmicos de apoio à gestão.
 
 ### 4.5. Movimentação de equipamentos — implementada
 
@@ -149,7 +142,7 @@ As restrições de exclusividade de instalações ativas utilizam **colunas gera
 | 03 | Consultas, cadastro de frotas/trens, cargas iniciais e movimentação | Implementada e validada incrementalmente no Laragon |
 | Atual | Gestão de pendências técnicas | Implementação inicial; testes pendentes |
 | 04 | Importação de condições dos rodeiros CSV | Implementação enviada ao GitHub, aguardando testes |
-| 05 | Ranking de priorização | Código implementado; testes locais pendentes |
+| 05 | Abas e rankings separados de pendências, diâmetros e periodicidade | Versão anterior validada; nova interface aguardando testes |
 | Futuras | Indicadores e funcionalidades administrativas | Planejadas |
 
 ### Concluído
