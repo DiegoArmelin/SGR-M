@@ -63,17 +63,24 @@ class DashboardGerencialService
         // Data de encerramento da pendência: últimos 30 dias corridos, hoje inclusive.
         // Conta ocorrências encerradas, inclusive as peças já retiradas.
         $inicio30 = now()->startOfDay()->subDays(29);
-        $encerradas30 = DB::table('pendencias_equipamentos as p')
-            ->join('eixos as e', 'e.id', '=', 'p.eixo_id')
-            ->join('carros as c', 'c.id', '=', 'e.carro_id')
-            ->join('trens as t', 't.id', '=', 'c.trem_id')
-            ->join('frotas as f', 'f.id', '=', 't.frota_id')
+        $consultaEncerradas = DB::table('pendencias_equipamentos as p')
             ->where('p.situacao', 'resolvida')
             ->whereNotNull('p.resolvida_em')
             ->where('p.resolvida_em', '>=', $inicio30)
-            ->where('p.resolvida_em', '<=', now())
-            ->when($frota, fn ($q) => $q->where('f.codigo', $frota))
-            ->count();
+            ->where('p.resolvida_em', '<=', now());
+
+        // Sem filtro, inclui também cadastros antigos sem eixo_id; com frota
+        // selecionada, considera apenas registros com localização rastreável.
+        if ($frota) {
+            $consultaEncerradas
+                ->join('eixos as e', 'e.id', '=', 'p.eixo_id')
+                ->join('carros as c', 'c.id', '=', 'e.carro_id')
+                ->join('trens as t', 't.id', '=', 'c.trem_id')
+                ->join('frotas as f', 'f.id', '=', 't.frota_id')
+                ->where('f.codigo', $frota);
+        }
+
+        $encerradas30 = $consultaEncerradas->count();
 
         return compact(
             'instalados', 'periodicidade', 'diametros',
