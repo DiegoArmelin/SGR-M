@@ -49,7 +49,7 @@ Registro, consulta, filtragem e resolução de pendências técnicas de rodeiros
 
 ### 4.3. Importação de dados CSV — iniciada
 
-Importação de **periodicidade percentual** por número de série, com validação completa do CSV, transação e controle de acesso do administrador. A importação de **diâmetros LR e LO** permanece como próxima etapa.
+Importação unificada de **periodicidade percentual, diâmetros LR e LO**, identificando frota, trem, carro, eixo e série em um único CSV. O sistema só atualiza condições com data posterior à última registrada, verifica a instalação ativa e executa alterações em transação. Acesso restrito ao administrador.
 
 ### 4.4. Priorização de equipamentos — planejada
 
@@ -148,7 +148,7 @@ As restrições de exclusividade de instalações ativas utilizam **colunas gera
 | 02 | Autenticação e controle de acesso por perfis | Implementada; testes manuais aprovados |
 | 03 | Consultas, cadastro de frotas/trens, cargas iniciais e movimentação | Implementada e validada incrementalmente no Laragon |
 | Atual | Gestão de pendências técnicas | Implementação inicial; testes pendentes |
-| 04 | Importação de periodicidade CSV | Implementação enviada ao GitHub, aguardando testes |
+| 04 | Importação de condições dos rodeiros CSV | Implementação enviada ao GitHub, aguardando testes |
 | Futuras | Importação de diâmetros, priorização e indicadores | Planejadas |
 
 ### Concluído
@@ -170,8 +170,8 @@ As restrições de exclusividade de instalações ativas utilizam **colunas gera
 - [ ] CRUD visual de carros, eixos, rodeiros e motores.
 - [x] Implementação inicial de gestão de pendências técnicas (testes locais pendentes).
 - [x] Serviços transacionais de movimentação.
-- [x] Implementação inicial de importação CSV de periodicidade (testes locais pendentes).
-- [ ] Importação de diâmetros LR/LO.
+- [x] Importação unificada CSV de periodicidade e diâmetros (testes locais pendentes).
+- [x] Importação de diâmetros LR/LO junto da periodicidade (testes locais pendentes).
 - [ ] Ranking de priorização.
 - [ ] Indicadores operacionais do dashboard.
 - [ ] Interface administrativa de gerenciamento de usuários.
