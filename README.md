@@ -49,7 +49,7 @@ Registro, consulta, filtragem e resolução de pendências técnicas de rodeiros
 
 ### 4.3. Importação de dados CSV — iniciada
 
-Importação unificada de **periodicidade percentual, diâmetros LR e LO**, identificando frota, trem, carro, eixo e série em um único CSV. O sistema só atualiza condições com data posterior à última registrada, verifica a instalação ativa e executa alterações em transação. Acesso restrito ao administrador.
+Importação unificada de **periodicidade percentual, diâmetros LR e LO**, identificando frota, trem, carro, eixo e série em um único CSV. O sistema só atualiza condições com data posterior à última registrada, verifica a instalação ativa e executa alterações em transação. A importação disponibiliza relatório individual por equipamento, filtros de resultado e exportação em CSV. Acesso restrito ao administrador.
 
 ### 4.4. Priorização de equipamentos — planejada
 
