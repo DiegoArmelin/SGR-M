@@ -8,14 +8,18 @@
 
 ## 1. Objetivo
 
-Cadastrar e acompanhar pendências técnicas associadas a rodeiros ou motores individualizados por número de série, classificadas em quatro graus de prioridade. Cada pendência preserva o equipamento, o responsável pelo registro e o histórico de resolução.
+Cadastrar e acompanhar pendências técnicas a partir da localização **Frota → Trem → Carro → Eixo** e do tipo de equipamento (rodeiro ou motor). O sistema resolve o número de série instalado automaticamente e preserva, no registro, tanto o equipamento identificado quanto a posição da ocorrência.
 
 ## 2. Regras de negócio
 
 | Regra | Implementação |
 |---|---|
 | Tipo | Cada pendência pertence a um rodeiro **ou** a um motor |
-| Vínculo | Identificação por número de série existente no banco |
+| Seleção | Frota → Trem → Carro → Eixo → Rodeiro ou Motor |
+| Vínculo | Busca automática da instalação ativa (`data_retirada IS NULL`) na posição escolhida |
+| Posição de origem | Armazenada em `eixo_id` para preservar a localização do registro após a movimentação |
+| Sem instalação | Rejeita cadastro se não houver equipamento do tipo escolhido no eixo |
+| Integridade da seleção | Confere novamente no POST se trem pertence à frota, carro ao trem e eixo ao carro |
 | Prioridade | `critica`, `alta`, `media`, `baixa` |
 | Situação | `aberta` ou `resolvida` |
 | Registro | Todos os perfis autenticados podem registrar e consultar |
@@ -34,10 +38,11 @@ A tabela não força uma única pendência aberta por equipamento: um mesmo rode
 | Arquivo | Finalidade |
 |---|---|
 | `database/migrations/2026_11_22_120000_create_pendencias_equipamentos_table.php` | Cria pendências e vínculos com equipamento e usuário |
+| `database/migrations/2026_11_22_130000_add_eixo_id_to_pendencias_equipamentos_table.php` | Adiciona vínculo opcional com eixo, sem alterar registros preexistentes |
 | `app/Models/PendenciaEquipamento.php` | Model Eloquent e relações com rodeiro, motor e autor |
 | `app/Http/Controllers/PendenciaEquipamentoController.php` | Listagem, cadastro, validação e resolução |
 | `resources/views/pendencias/index.blade.php` | Listagem, filtros e formulário de resolução |
-| `resources/views/pendencias/create.blade.php` | Cadastro por tipo e número de série, com sugestões |
+| `resources/views/pendencias/create.blade.php` | Seletores progressivos de frota, trem, carro, eixo e tipo; exibe a série instalada automaticamente |
 | `tests/Feature/PendenciaEquipamentoTest.php` | Testes de autenticação, cadastro, validação e resolução |
 | `routes/web.php` | Rotas protegidas para listagem, cadastro e resolução |
 | `resources/views/layouts/app.blade.php` | Atalho para pendências na navegação |
@@ -46,8 +51,8 @@ A tabela não força uma única pendência aberta por equipamento: um mesmo rode
 ## 4. Métodos e principais recursos de programação
 
 - **`index(Request)`:** valida filtros de situação e tipo; consulta as pendências com `with()` para evitar N+1; aplica ordem por situação e prioridade; pagina em 20 registros.
-- **`create(Request)`:** seleciona rodeiro ou motor e carrega sugestões de série para o tipo escolhido; o campo aceita digitação manual.
-- **`store(Request)`:** valida número de série, tipo, descrição e prioridade, identifica equipamento e salva a pendência com o ID do autor.
+- **`create(Request)`:** valida os filtros da hierarquia, restringe cada conjunto de opções ao nível pai e mostra a série da instalação ativa do tipo selecionado.
+- **`store(Request)`:** valida os IDs de frota/trem/carro/eixo e o tipo; verifica os vínculos entre os quatro níveis; bloqueia o eixo, consulta a instalação ativa do equipamento correspondente e salva o `eixo_id`, `rodeiro_id` ou `motor_id`, além do autor e da prioridade. O número de série não é digitado nem confiado ao formulário.
 - **`resolver(Request, PendenciaEquipamento)`:** exige justificativa, bloqueia o registro via `lockForUpdate()` e altera o estado somente quando a pendência está aberta.
 - **`DB::transaction()`:** garante atomicidade do encerramento.
 - **`Rule::in()`:** impede prioridades e tipos fora dos conjuntos autorizados.
@@ -74,18 +79,19 @@ Após os testes, acesse `http://sgr-m.test/pendencias` autenticado no sistema.
 ## 6. Verificação funcional
 
 1. Abrir o módulo de pendências e selecionar **Registrar pendência**.
-2. Escolher rodeiro ou motor, informar um número de série existente, a descrição e a prioridade.
-3. Conferir que o registro aparece como **Aberta** na listagem.
+2. Selecionar frota, trem, carro e posição do eixo; em seguida, escolher rodeiro ou motor.
+3. Confirmar que o sistema exibe automaticamente a série instalada e informar a descrição e a prioridade.
+4. Conferir que o registro aparece como **Aberta** na listagem, com a posição de origem.
 4. Aplicar filtros por tipo e situação.
 5. Cadastrar uma pendência crítica e outra baixa para conferir a ordenação.
 6. Resolver uma pendência fornecendo justificativa.
 7. Confirmar que a resolução registra data/hora e que o vínculo com o equipamento é mantido.
-8. Tentar registrar série inexistente ou prioridade inválida; a aplicação deve rejeitar.
+8. Tentar adulterar IDs da hierarquia no POST ou selecionar uma posição sem instalação ativa; a aplicação deve rejeitar.
 9. Tentar resolver novamente uma pendência fechada; a aplicação deve rejeitar.
 
 ## 7. Testes, evidências e limitações
 
-A suíte `PendenciaEquipamentoTest.php` foi criada com oito cenários: visitante redirecionado, acesso dos três perfis, cadastro de rodeiro, cadastro de motor, série inexistente, resolução com justificativa, dupla resolução e ordenação por prioridade.
+A suíte `PendenciaEquipamentoTest.php` foi atualizada com dez cenários: visitante redirecionado, acesso dos três perfis, exibição automática de série por posição, cadastro de rodeiro, cadastro de motor, hierarquia adulterada, posição sem instalação ativa, resolução com justificativa, dupla resolução e ordenação por prioridade.
 
 **Evidência:** primeira execução local informou 7 testes falhos e 1 aprovado, devido ao Model tentar consultar `pendencia_equipamentos` em vez da tabela criada `pendencias_equipamentos`. O Model foi corrigido para definir `protected $table` explicitamente. A aprovação da segunda execução ainda depende de confirmação do desenvolvedor.
 
@@ -102,3 +108,7 @@ A suíte `PendenciaEquipamentoTest.php` foi criada com oito cenários: visitante
 - **Testes de integração:** cenários positivos e negativos, com validação no banco.
 
 **Resumo para apresentar:** “O módulo permite registrar pendências por número de série, classificá-las por criticidade e acompanhar sua resolução sem perder o vínculo com o equipamento, oferecendo filtros e testes automatizados.”
+
+## 9. Evolução do cadastro: localização em vez de série
+
+A mudança preserva as pendências antigas: a nova coluna `eixo_id` é opcional porque registros previamente criados não armazenavam a posição. No cadastro novo, o campo é obrigatório e a série é obtida pela instalação ativa. A listagem mostra a localização histórica quando disponível; nos registros antigos, informa que não foi registrada. Mesmo após a substituição do equipamento, a pendência permanece associada ao item originalmente apontado e à posição de origem. A interface utiliza seletores dependentes por GET; a verificação definitiva ocorre no POST, no servidor.
