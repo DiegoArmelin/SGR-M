@@ -4,7 +4,7 @@
 **Disciplina:** Laboratório de Engenharia de Software  
 **Entrega:** Módulo incremental de gestão de pendências  
 **Branch:** `feature/entrega-03-consulta-equipamentos`  
-**Situação:** código, interfaces e testes publicados; testes e validação visual ainda precisam ser executados no Laragon.
+**Situação:** correção no Model aplicada após falha nos testes de integração; nova execução no Laragon ainda pendente.
 
 ## 1. Objetivo
 
@@ -52,6 +52,7 @@ A tabela não força uma única pendência aberta por equipamento: um mesmo rode
 - **`DB::transaction()`:** garante atomicidade do encerramento.
 - **`Rule::in()`:** impede prioridades e tipos fora dos conjuntos autorizados.
 - **`belongsTo()`:** associa cada ocorrência ao Model do equipamento correspondente e ao autor.
+- **`protected $table = 'pendencias_equipamentos'`:** informa explicitamente o nome da tabela do Model, evitando a inferência automática incompatível do Eloquent.
 - **`paginate()->withQueryString()`:** mantém filtros na navegação entre páginas.
 
 ## 5. Procedimento de execução no Laragon
@@ -86,7 +87,7 @@ Após os testes, acesse `http://sgr-m.test/pendencias` autenticado no sistema.
 
 A suíte `PendenciaEquipamentoTest.php` foi criada com oito cenários: visitante redirecionado, acesso dos três perfis, cadastro de rodeiro, cadastro de motor, série inexistente, resolução com justificativa, dupla resolução e ordenação por prioridade.
 
-**Estado:** testes não foram executados pelo assistente no ambiente Laravel/MySQL do usuário. A aprovação depende da execução local.
+**Evidência:** primeira execução local informou 7 testes falhos e 1 aprovado, devido ao Model tentar consultar `pendencia_equipamentos` em vez da tabela criada `pendencias_equipamentos`. O Model foi corrigido para definir `protected $table` explicitamente. A aprovação da segunda execução ainda depende de confirmação do desenvolvedor.
 
 **Limitações:** não inclui priorização combinada com periodicidade/diâmetro, regras automáticas de abertura, vínculo com motivos de retirada, edição de pendências, auditoria do usuário resolutor ou painel gerencial. Esses pontos pertencem às próximas etapas.
 
