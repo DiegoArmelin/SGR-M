@@ -68,6 +68,7 @@
         @elseif(!$carroId)
             <p class="status-note">Agora selecione um dos carros do trem {{ $tremSelecionado->codigo }}.</p>
         @else
+            @if(session('success'))<p role="status" style="color:#166534;">{{ session('success') }}</p>@endif
             <div class="hierarchy-summary">
                 <strong>Frota {{ $frotaSelecionada->codigo }} → Trem {{ $tremSelecionado->codigo }} → Carro {{ $carroSelecionado->codigo }}</strong>
                 <span class="status-note"> | {{ $eixos->count() }} eixo(s) cadastrado(s)</span>
@@ -84,6 +85,7 @@
                             <th>Diâmetro LR / LO (mm)</th>
                             <th>Periodicidade (%)</th>
                             <th>Motor instalado</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -109,9 +111,16 @@
                                     {{ $motor?->numero_serie ?? 'Sem motor instalado' }}
                                     @if($motor)<div class="status-note">Status: {{ $motor->status }}</div>@endif
                                 </td>
+                                <td>
+                                    <a href="{{ route('equipamentos.historico', $eixo) }}">Histórico</a>
+                                    @if(auth()->user()->temPerfil('administrador', 'tecnico'))
+                                        <div><a href="{{ route('equipamentos.movimentacao.create', ['eixo' => $eixo, 'tipo' => 'rodeiro']) }}">Trocar rodeiro</a></div>
+                                        <div><a href="{{ route('equipamentos.movimentacao.create', ['eixo' => $eixo, 'tipo' => 'motor']) }}">Trocar motor</a></div>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5">Não há eixos cadastrados neste carro.</td></tr>
+                            <tr><td colspan="6">Não há eixos cadastrados neste carro.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
