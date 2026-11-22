@@ -51,7 +51,7 @@ Registro, consulta, filtragem e resolução de pendências técnicas de rodeiros
 
 Importação unificada de **periodicidade percentual, diâmetros LR e LO**, identificando frota, trem, carro, eixo e série em um único CSV. O sistema só atualiza condições com data posterior à última registrada, verifica a instalação ativa e executa alterações em transação. A importação disponibiliza relatório individual por equipamento, filtros de resultado e exportação em CSV. Acesso restrito ao administrador.
 
-### 4.4. Priorização de equipamentos — planejada
+### 4.4. Priorização de equipamentos — implementada (testes pendentes)
 
 O ranking seguirá a seguinte ordem de precedência:
 
@@ -59,7 +59,7 @@ O ranking seguirá a seguinte ordem de precedência:
 2. Pendências altas.
 3. Pendências médias.
 4. Pendências baixas.
-5. Rodeiros com periodicidade superior a 100%.
+5. Rodeiros com periodicidade maior ou igual a 100%.
 6. Rodeiros com menor diâmetro LR/LO inferior a 745 mm.
 
 Esses limites são parâmetros acadêmicos e **não representam critérios operacionais oficiais**.
@@ -149,7 +149,8 @@ As restrições de exclusividade de instalações ativas utilizam **colunas gera
 | 03 | Consultas, cadastro de frotas/trens, cargas iniciais e movimentação | Implementada e validada incrementalmente no Laragon |
 | Atual | Gestão de pendências técnicas | Implementação inicial; testes pendentes |
 | 04 | Importação de condições dos rodeiros CSV | Implementação enviada ao GitHub, aguardando testes |
-| Futuras | Importação de diâmetros, priorização e indicadores | Planejadas |
+| 05 | Ranking de priorização | Código implementado; testes locais pendentes |
+| Futuras | Indicadores e funcionalidades administrativas | Planejadas |
 
 ### Concluído
 
@@ -172,7 +173,7 @@ As restrições de exclusividade de instalações ativas utilizam **colunas gera
 - [x] Serviços transacionais de movimentação.
 - [x] Importação unificada CSV de periodicidade e diâmetros (testes locais pendentes).
 - [x] Importação de diâmetros LR/LO junto da periodicidade (testes locais pendentes).
-- [ ] Ranking de priorização.
+- [x] Ranking de priorização (testes locais pendentes).
 - [ ] Indicadores operacionais do dashboard.
 - [ ] Interface administrativa de gerenciamento de usuários.
 - [x] Testes automatizados dos módulos anteriores.
@@ -331,7 +332,8 @@ Os relatórios detalhados ficam na pasta [`docs/`](docs/):
 - [Entrega 03 — Movimentação de Equipamentos](docs/03-movimentacao-equipamentos.md).
 - [Entrega 03 — Catálogo de Motivos de Retirada](docs/03-motivos-retirada.md).
 - [Entrega 03 — Gestão de Pendências Técnicas](docs/03-gestao-pendencias.md).
-- [Entrega 04 — Importação de Periodicidade CSV](docs/04-importacao-periodicidade-csv.md).
+- [Entrega 04 — Importação de Condições CSV](docs/04-importacao-periodicidade-csv.md).
+- [Entrega 05 — Ranking de Priorização](docs/05-ranking-priorizacao.md).
 
 Os documentos descrevem as decisões técnicas, os componentes implementados, os testes manuais e as limitações de cada etapa.
 
