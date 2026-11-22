@@ -32,6 +32,12 @@ class MovimentacaoEquipamentoController extends Controller
             'tipo' => $tipo,
             'atual' => $instalacao?->{$tipo},
             'dataInstalacao' => $instalacao?->data_instalacao?->format('Y-m-d'),
+            // A lista contém somente itens do tipo solicitado com status em estoque.
+            // A validação definitiva ocorre no serviço, durante a substituição.
+            'equipamentosEstoque' => ($tipo === 'rodeiro' ? Rodeiro::query() : Motor::query())
+                ->where('status', 'estoque')
+                ->orderBy('numero_serie')
+                ->pluck('numero_serie'),
             // Apenas motivos ativos do tipo de equipamento escolhido.
             'motivos' => MotivoRetirada::where('tipo_equipamento', $tipo)
                 ->where('ativo', true)->orderBy('descricao')->get(),
@@ -50,16 +56,26 @@ class MovimentacaoEquipamentoController extends Controller
         // novamente no serviço dentro da transação.
         $dados = $request->validate([
             'numero_serie_saida' => ['required', 'string', 'max:50'],
-            'numero_serie_entrada' => ['required', 'string', 'max:50'],
+            // Permite escolher a série na lista ou digitá-la manualmente.
+            // O campo manual prevalece se ambos estiverem preenchidos.
+            'numero_serie_entrada' => ['nullable', 'string', 'max:50', 'required_without:numero_serie_estoque'],
+            'numero_serie_estoque' => ['nullable', 'string', 'max:50', 'required_without:numero_serie_entrada'],
             'data_movimentacao' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'motivo_retirada_id' => ['required', 'integer', 'exists:motivos_retirada,id'],
             'observacoes' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        // Quando o usuário digita uma série, ela tem prioridade sobre a seleção.
+        // trim() evita divergências ocasionadas por espaços antes/depois da série.
+        $serieEntrada = trim($dados['numero_serie_entrada'] ?? '');
+        if ($serieEntrada === '') {
+            $serieEntrada = trim($dados['numero_serie_estoque'] ?? '');
+        }
+
         $service->substituir(
             $eixo,
             $tipo,
-            $dados['numero_serie_entrada'],
+            $serieEntrada,
             $dados['numero_serie_saida'],
             $dados['data_movimentacao'],
             (int) $dados['motivo_retirada_id'],
