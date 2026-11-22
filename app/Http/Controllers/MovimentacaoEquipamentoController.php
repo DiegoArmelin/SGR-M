@@ -19,7 +19,7 @@ use Illuminate\View\View;
  */
 class MovimentacaoEquipamentoController extends Controller
 {
-    public function create(Eixo $eixo, string $tipo): View
+    public function create(Request $request, Eixo $eixo, string $tipo): View
     {
         abort_unless(in_array($tipo, ['rodeiro', 'motor'], true), 404);
 
@@ -30,6 +30,8 @@ class MovimentacaoEquipamentoController extends Controller
         return view('equipamentos.movimentar', [
             'eixo' => $eixo,
             'tipo' => $tipo,
+            // Permite retornar à lista de pendências após realizar a troca.
+            'origemPendencias' => $request->query('origem') === 'pendencias',
             'atual' => $instalacao?->{$tipo},
             'dataInstalacao' => $instalacao?->data_instalacao?->format('Y-m-d'),
             // A lista contém somente itens do tipo solicitado com status em estoque.
@@ -63,6 +65,7 @@ class MovimentacaoEquipamentoController extends Controller
             'data_movimentacao' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'motivo_retirada_id' => ['required', 'integer', 'exists:motivos_retirada,id'],
             'observacoes' => ['nullable', 'string', 'max:1000'],
+            'origem' => ['nullable', 'in:pendencias'],
         ]);
 
         // Quando o usuário digita uma série, ela tem prioridade sobre a seleção.
@@ -81,6 +84,13 @@ class MovimentacaoEquipamentoController extends Controller
             (int) $dados['motivo_retirada_id'],
             $dados['observacoes'] ?? null
         );
+
+        // Se a troca começou pela lista de pendências, retorna à listagem
+        // para que o usuário veja imediatamente a pendência resolvida.
+        if (($dados['origem'] ?? null) === 'pendencias') {
+            return redirect()->route('pendencias.index')
+                ->with('success', 'Substituição registrada; pendências vinculadas ao equipamento foram encerradas.');
+        }
 
         return redirect()->route('equipamentos.hierarquica', [
             'frota_id' => $eixo->carro->trem->frota_id,
