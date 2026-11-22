@@ -22,8 +22,8 @@
 @section('content')
 <main class="container">
     <section class="card">
-        <h1 class="page-title">Importação de condições dos rodeiros</h1>
-        <p>Atualize <strong>diâmetros LR/LO e periodicidade</strong> de uma só vez, desde que a data da medição no CSV seja mais recente que a registrada no sistema.</p>
+        <h1 class="page-title">Importação de condições de rodeiros e motores</h1>
+        <p>Atualize <strong>diâmetros LR/LO e periodicidade dos rodeiros</strong>, além da <strong>periodicidade dos motores</strong>, no mesmo arquivo. A data é comparada separadamente para cada equipamento.</p>
 
         @if(session('success'))
             <p role="status" style="padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;color:#166534">
@@ -38,11 +38,11 @@
         @endif
 
         <h2>Estrutura do CSV</h2>
-        <p>Use codificação UTF-8 e as nove colunas abaixo, separadas por ponto e vírgula. A data deve ter o formato <code>AAAA-MM-DD HH:MM:SS</code>.</p>
-        <pre style="padding:14px;background:#f1f5f9;border-radius:6px;overflow-x:auto;font-size:12px">frota;trem;carro;posicao;serie_rodeiro;diametro_lr;diametro_lo;periodicidade;data_atualizacao
-I;I01;I011;1;RD-SIM-0112648;829.10;829.50;95.50;2026-11-21 12:00:00</pre>
+        <p>Use codificação UTF-8 e as onze colunas abaixo, separadas por ponto e vírgula. A data deve ter o formato <code>AAAA-MM-DD HH:MM:SS</code>.</p>
+        <pre style="padding:14px;background:#f1f5f9;border-radius:6px;overflow-x:auto;font-size:12px">frota;trem;carro;posicao;serie_rodeiro;diametro_lr;diametro_lo;periodicidade;serie_motor;periodicidade_motor;data_atualizacao
+I;I01;I011;1;RD-SIM-0112648;829.10;829.50;95.50;MT-SIM-0112648;102.00;2026-11-23 12:00:00</pre>
 
-        <p><strong>Regras de importação:</strong> o sistema confirma que a frota, o trem, o carro e o eixo existem e que a série corresponde ao rodeiro instalado naquela posição. Registros de peças já substituídas são ignorados. Dados com data igual ou anterior à última medição também são ignorados.</p>
+        <p><strong>Regras de importação:</strong> o sistema confirma que a frota, o trem, o carro e o eixo existem e que as séries correspondem ao rodeiro e motor instalados naquela posição. Cada equipamento recebe seus próprios dados somente quando a data do CSV for mais recente que sua última atualização. Divergências são registradas por tipo.</p>
         <p>Se existir cabeçalho incorreto, uma série desconhecida, uma posição inexistente ou valor inválido, a importação inteira será recusada. O limite é de 2 MB e 10.000 linhas por arquivo.</p>
 
         @if($relatorio)
@@ -50,6 +50,8 @@ I;I01;I011;1;RD-SIM-0112648;829.10;829.50;95.50;2026-11-21 12:00:00</pre>
             <div id="relatorio-importacao">
                 <h2>Resultado detalhado da última importação</h2>
                 <div class="import-summary">
+                    <div class="import-metric"><strong>{{ $relatorio['rodeiros_atualizados'] ?? 0 }}</strong><span>Rodeiros atualizados</span></div>
+                    <div class="import-metric"><strong>{{ $relatorio['motores_atualizados'] ?? 0 }}</strong><span>Motores atualizados</span></div>
                     <div class="import-metric"><strong>{{ $relatorio['linhas'] }}</strong><span>Linhas processadas</span></div>
                     <div class="import-metric"><strong>{{ $relatorio['atualizados'] }}</strong><span>Atualizados</span></div>
                     <div class="import-metric"><strong>{{ $relatorio['ignorados_data'] }}</strong><span>Ignorados por data</span></div>
@@ -82,9 +84,13 @@ I;I01;I011;1;RD-SIM-0112648;829.10;829.50;95.50;2026-11-21 12:00:00</pre>
                                 <th>Série do rodeiro</th>
                                 <th>LR / LO (mm)</th>
                                 <th>Periodicidade</th>
+                                <th>Série do motor</th>
+                                <th>Periodicidade motor</th>
                                 <th>Data CSV</th>
-                                <th>Resultado</th>
-                                <th>Motivo / observação</th>
+                                <th>Resultado rodeiro</th>
+                                <th>Motivo rodeiro</th>
+                                <th>Resultado motor</th>
+                                <th>Motivo motor</th>
                             </tr>
                         </thead>
                         <tbody id="resultado-linhas">
@@ -97,13 +103,14 @@ I;I01;I011;1;RD-SIM-0112648;829.10;829.50;95.50;2026-11-21 12:00:00</pre>
                                     <td>{{ $item['serie_rodeiro'] }}</td>
                                     <td>{{ $item['diametro_lr'] }} / {{ $item['diametro_lo'] }}</td>
                                     <td>{{ $item['periodicidade'] }}%</td>
+                                    <td>{{ $item['serie_motor'] ?? '—' }}</td>
+                                    <td>{{ $item['periodicidade_motor'] ?? '—' }}%</td>
                                     <td>{{ $item['data_atualizacao'] }}</td>
-                                    <td>
-                                        <span class="import-status {{ $item['status'] === 'atualizado' ? 'ok' : 'skip' }}">
-                                            {{ $item['status'] === 'atualizado' ? 'Atualizado' : 'Ignorado' }}
-                                        </span>
-                                    </td>
-                                    <td>{{ $item['motivo'] }}</td>
+                                    @foreach(['rodeiro','motor'] as $equipamentoTipo)
+                                        @php $atualizado = ($item['status_' . $equipamentoTipo] ?? '') === 'atualizado'; @endphp
+                                        <td><span class="import-status {{ $atualizado ? 'ok' : 'skip' }}">{{ $atualizado ? 'Atualizado' : 'Ignorado' }}</span></td>
+                                        <td>{{ $item['motivo_' . $equipamentoTipo] ?? '—' }}</td>
+                                    @endforeach
                                 </tr>
                             @endforeach
                         </tbody>
@@ -120,7 +127,7 @@ I;I01;I011;1;RD-SIM-0112648;829.10;829.50;95.50;2026-11-21 12:00:00</pre>
                 <input class="form-control" id="arquivo" type="file" name="arquivo" accept=".csv,.txt,text/csv" required>
             </div>
             <button class="btn-primary" type="submit" onclick="return confirm('Importar dados? Somente registros com datas mais recentes serão atualizados.');">
-                Importar dados dos rodeiros
+                Importar dados de rodeiros e motores
             </button>
         </form>
     </section>
