@@ -13,6 +13,7 @@ use App\Models\Rodeiro;
 use App\Models\Trem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -206,20 +207,20 @@ class DashboardGerencialTest extends TestCase
             'situacao'=>'resolvida','registrado_por'=>$autor->id,
             'resolvida_em'=>now()->subDays(3),
         ]);
-        $encerrada->timestamps = false;
-        $encerrada->update([
-            'created_at'=>now()->subDays(45),
-            'updated_at'=>now()->subDays(3),
+        // created_at é protegido por atribuição em massa no Eloquent.
+        // Atualizar diretamente a tabela garante a data histórica do teste.
+        DB::table('pendencias_equipamentos')->where('id', $encerrada->id)->update([
+            'created_at' => now()->subDays(45),
+            'updated_at' => now()->subDays(3),
         ]);
         $antiga = PendenciaEquipamento::create([
             'eixo_id'=>$i['eixo']->id,'rodeiro_id'=>$i['rodeiro']->id,
             'descricao'=>'Aberta antiga','prioridade'=>'baixa',
             'situacao'=>'aberta','registrado_por'=>$autor->id,
         ]);
-        $antiga->timestamps = false;
-        $antiga->update([
-            'created_at'=>now()->subDays(40),
-            'updated_at'=>now()->subDays(40),
+        DB::table('pendencias_equipamentos')->where('id', $antiga->id)->update([
+            'created_at' => now()->subDays(40),
+            'updated_at' => now()->subDays(40),
         ]);
 
         // Outra frota não deve contaminar os números da frota I.
@@ -229,14 +230,19 @@ class DashboardGerencialTest extends TestCase
             'situacao'=>'aberta','registrado_por'=>$autor->id,
         ]);
 
-        $this->actingAs($autor)->get(route('dashboard.gerencial',['frota'=>'I']))
-            ->assertOk()->assertViewHas('dados', fn ($dados) =>
-                $dados['encerradas30']===1
-                && $dados['tendencia']['atual']['abertas']===1
-                && $dados['tendencia']['atual']['encerradas']===1
-                && $dados['tendencia']['anterior']['abertas']===2
-                && $dados['tendencia']['direcao']==='diminuindo'
-            )->assertSee('Tendência do saldo de pendências');
+        // Assertivas isoladas indicam exatamente qual contagem divergiu.
+        $resposta = $this->actingAs($autor)
+            ->get(route('dashboard.gerencial', ['frota' => 'I']))->assertOk();
+
+        $resposta->assertViewHas('dados', function ($dados) {
+            $this->assertSame(1, $dados['encerradas30'], 'Encerramentos nos 30 dias atuais');
+            $this->assertSame(1, $dados['tendencia']['atual']['abertas'], 'Aberturas atuais');
+            $this->assertSame(1, $dados['tendencia']['atual']['encerradas'], 'Encerramentos atuais');
+            $this->assertSame(2, $dados['tendencia']['anterior']['abertas'], 'Aberturas anteriores');
+            $this->assertSame(0, $dados['tendencia']['anterior']['encerradas'], 'Encerramentos anteriores');
+            $this->assertSame('diminuindo', $dados['tendencia']['direcao'], 'Direção do saldo');
+            return true;
+        })->assertSee('Tendência do saldo de pendências');
     }
 
 }
