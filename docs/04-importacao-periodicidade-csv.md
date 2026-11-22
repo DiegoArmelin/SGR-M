@@ -36,8 +36,6 @@ I;I01;I011;1;RD-SIM-0112648;829.10;829.50;95.50;2026-11-21 12:00:00
 | Upload | Máximo de 2 MB e 10.000 linhas |
 | Persistência | Não altera vínculo, histórico de substituições ou pendências |
 
-**Observação:** as condições de diâmetros entre LR/LO e eixos, bem como os intervalos definidos exclusivamente para gerar dados fictícios de teste, **não são regras de validação do sistema**. A aplicação valida apenas formato e integridade dos valores.
-
 ## 3. Arquivos e responsabilidades
 
 | Arquivo | Responsabilidade |
