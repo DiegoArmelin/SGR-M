@@ -89,9 +89,9 @@
                             </ul></td>
                             <td>
                                 <a href="{{ route('equipamentos.hierarquica', [
-                                    'frota_id' => $frotas->firstWhere('codigo', $item['frota'])?->id,
-                                    'trem_id' => '', 'carro_id' => ''
-                                ]) }}">Consultar frota</a>
+                                    'frota_id' => $item['frota_id'],
+                                    'trem_id' => $item['trem_id'], 'carro_id' => $item['carro_id']
+                                ]) }}">Consultar posição</a>
                                 @if(auth()->user()->temPerfil('administrador','tecnico'))
                                     <div><a href="{{ route('equipamentos.movimentacao.create', ['eixo'=>$item['eixo_id'],'tipo'=>$item['tipo']]) }}">Substituir</a></div>
                                 @endif
