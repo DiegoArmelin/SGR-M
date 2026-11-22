@@ -321,6 +321,7 @@ Os relatórios detalhados ficam na pasta [`docs/`](docs/):
 - [Entrega 02 — Autenticação e Controle de Acesso](docs/02-autenticacao-perfis.md).
 - [Entrega 03 — Cadastro e Consulta de Equipamentos](docs/03-cadastro-consulta-equipamentos.md).
 - [Entrega 03 — Carga Inicial das Frotas I, J e L](docs/03-carga-inicial-frotas.md).
+- [Entrega 03 — Carga Inicial de Rodeiros e Motores](docs/03-carga-inicial-equipamentos.md).
 
 Os documentos descrevem as decisões técnicas, os componentes implementados, os testes manuais e as limitações de cada etapa.
 
