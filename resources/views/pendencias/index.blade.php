@@ -142,7 +142,7 @@
                             <td>
                                 @if($podeSubstituir)
                                     <a class="acao-substituir"
-                                       href="{{ route('equipamentos.movimentacao.create', ['eixo'=>$eixo->id, 'tipo'=>$tipo]) }}">
+                                       href="{{ route('equipamentos.movimentacao.create', ['eixo'=>$eixo->id, 'tipo'=>$tipo, 'origem'=>'pendencias']) }}">
                                         Substituir
                                     </a>
                                 @elseif($pendencia->situacao === 'resolvida')
