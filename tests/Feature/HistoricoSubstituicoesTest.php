@@ -84,8 +84,12 @@ class HistoricoSubstituicoesTest extends TestCase
                 && count($d['frotas']) === 1
                 && $d['frotas']['I']['rodeiro'] === 1
                 && $d['frotas']['I']['motor'] === 1
+                && ($d['motivos']['rodeiro']['periodicidade vencida'] ?? 0) === 1
+                && ($d['motivos']['motor']['periodicidade vencida'] ?? 0) === 1
             )
             ->assertSee('Motivos das substituições')
+            ->assertSee('Gráfico de rosca dos motivos de rodeiros')
+            ->assertSee('Gráfico de rosca dos motivos de motores')
             ->assertSee('Substituições por frota');
 
         $idMotivo = MotivoRetirada::where('codigo','ROD006')->value('id');
@@ -127,4 +131,18 @@ class HistoricoSubstituicoesTest extends TestCase
             'motivo_id' => 999999,
         ]))->assertSessionHasErrors('motivo_id');
     }
+    public function test_frota_ficticia_de_teste_nao_aparece_na_comparacao(): void
+    {
+        $data = now()->subMonth()->startOfMonth()->addDays(5)->toDateString();
+        $this->registrar('I','I01','rodeiro','ROD006',$data);
+        $this->registrar('TESTE','T01','motor','MOT006',$data);
+
+        $this->actingAs(User::factory()->create(['perfil'=>'gestor']))
+            ->get(route('dashboard.historico'))
+            ->assertOk()
+            ->assertViewHas('dados', fn ($d) => !isset($d['frotas']['TESTE'])
+                && isset($d['frotas']['I'])
+                && $d['totais']['motor'] === 1);
+    }
+
 }
