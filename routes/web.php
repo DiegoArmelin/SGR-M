@@ -57,10 +57,12 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
 
-    // Dashboard principal.
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    // Página inicial autenticada: utiliza o mesmo painel de indicadores
+    // gerenciais, inclusive o filtro por frota, sem duplicar lógica.
+    // Preserva o nome 'dashboard' usado pelo login e pelo menu superior.
+    Route::get('/dashboard', [DashboardGerencialController::class, 'index'])
+        ->middleware('perfil:administrador,gestor,tecnico')
+        ->name('dashboard');
 
     // Consulta permitida aos três perfis autenticados.
     Route::get('/equipamentos', [ConsultaEquipamentosController::class, 'index'])
