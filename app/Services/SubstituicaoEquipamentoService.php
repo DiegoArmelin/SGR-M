@@ -6,6 +6,7 @@ use App\Models\Eixo;
 use App\Models\InstalacaoMotor;
 use App\Models\InstalacaoRodeiro;
 use App\Models\Motor;
+use App\Models\MotivoRetirada;
 use App\Models\Rodeiro;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -25,7 +26,7 @@ class SubstituicaoEquipamentoService
         string $serieEntrada,
         string $serieSaida,
         string $data,
-        string $motivo,
+        int $motivoId,
         ?string $observacoes = null
     ): void {
         if (!in_array($tipo, ['rodeiro', 'motor'], true)) {
@@ -33,7 +34,7 @@ class SubstituicaoEquipamentoService
         }
 
         DB::transaction(function () use (
-            $eixo, $tipo, $serieEntrada, $serieSaida, $data, $motivo, $observacoes
+            $eixo, $tipo, $serieEntrada, $serieSaida, $data, $motivoId, $observacoes
         ): void {
             // Bloqueia o eixo durante a operação. Assim duas trocas simultâneas
             // na mesma posição não devem processar o mesmo estado inicial.
@@ -112,10 +113,23 @@ class SubstituicaoEquipamentoService
                 ]);
             }
 
+            // A consulta e o bloqueio ocorrem também no serviço, garantindo que
+            // o tipo do motivo não possa ser adulterado na requisição HTTP.
+            $motivo = MotivoRetirada::query()->whereKey($motivoId)
+                ->where('tipo_equipamento', $tipo)
+                ->where('ativo', true)->first();
+
+            if (!$motivo) {
+                throw ValidationException::withMessages([
+                    'motivo_retirada_id' => 'Selecione um motivo ativo do tipo de equipamento correto.',
+                ]);
+            }
+
             // Finaliza o vínculo antigo, preservando-o para relatórios históricos.
             $atual->update([
                 'data_retirada' => $data,
-                'motivo_retirada' => $motivo,
+                'motivo_retirada' => $motivo->descricao, // Cópia textual preserva histórico legível.
+                'motivo_retirada_id' => $motivo->id,
                 'observacoes' => $observacoes,
             ]);
 
