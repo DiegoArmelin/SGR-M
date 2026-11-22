@@ -26,6 +26,22 @@
     .rank-card{min-width:175px;flex:1;border:1px solid #e2e8f0;border-radius:8px;padding:14px}
     .rank-card strong{font-size:27px;display:block;color:#17365d}
     .rank-card small{color:#64748b}
+    /* Cada faixa possui cor semântica e barra sobre o parque instalado. */
+    .rank-card {border-left:4px solid var(--rc,#64748b);background:var(--bg,#f8fafc)}
+    .rank-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .rank-card-number{font-weight:800;font-size:27px;color:#17365d}
+    .rank-card-percent{font-size:16px;font-weight:800;color:var(--rc,#334155)}
+    .rank-card-sub{margin-top:7px;font-size:12px;color:#475569}
+    .rank-track{height:7px;background:#e2e8f0;border-radius:50px;overflow:hidden;margin-top:12px}
+    .rank-fill{height:100%;width:var(--pct,0%);background:var(--rc,#64748b);border-radius:50px}
+    .rc-total{--rc:#2563eb;--bg:#eff6ff}
+    .rc-critica{--rc:#dc2626;--bg:#fff1f2}
+    .rc-alta{--rc:#ea580c;--bg:#fff7ed}
+    .rc-media{--rc:#ca8a04;--bg:#fefce8}
+    .rc-baixa{--rc:#16a34a;--bg:#f0fdf4}
+    .rc-atencao{--rc:#d97706;--bg:#fffbeb}
+    .rank-legend{font-size:12px;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 12px;margin:12px 0}
+    .rank-legend strong{color:#1e293b}
     .rank-small{font-size:12px;color:#64748b}
     .rank-action{white-space:nowrap}
     @media(max-width:650px){.rank-tab{flex:1;text-align:center;padding:12px 7px}.rank-section{padding:12px}}
@@ -51,12 +67,34 @@
             <h2>1. Pendências técnicas — {{ $tipo === 'rodeiro' ? 'Rodeiros' : 'Motores' }}</h2>
             <p class="rank-description">Pendências abertas, ordenadas por prioridade: crítica, alta, média e baixa.</p>
             @include('ranking.partials.filtros', ['prefixo'=>'p','mostrarPrioridade'=>true])
+
+            {{-- Contagem de equipamentos distintos: várias ocorrências não
+                 aumentam artificialmente a porcentagem da frota afetada. --}}
+            @php
+                $pct = fn ($valor, $base) => $base > 0 ? round(100*$valor/$base,1) : 0;
+                $pAfetados = $pct($equipamentosComPendencia,$instaladosPendencias);
+            @endphp
             <div class="rank-cards">
-                <div class="rank-card"><strong>{{ $totalPendencias }}</strong><small>Total de pendências (filtros aplicados)</small></div>
-                @foreach(['critica'=>'Críticas','alta'=>'Altas','media'=>'Médias','baixa'=>'Baixas'] as $chave=>$rotulo)
-                    <div class="rank-card"><strong>{{ $pendenciasPorPrioridade[$chave] ?? 0 }}</strong><small>{{ $rotulo }} na localização filtrada</small></div>
+                <div class="rank-card rc-total">
+                    <small>Equipamentos com pendências</small>
+                    <div class="rank-card-top"><span class="rank-card-number">{{ $equipamentosComPendencia }}</span><span class="rank-card-percent">{{ number_format($pAfetados,1,',','.') }}%</span></div>
+                    <div class="rank-card-sub">de {{ $instaladosPendencias }} instalados · {{ $totalPendenciasGeral }} ocorrências abertas</div>
+                    <div class="rank-track"><div class="rank-fill" style="--pct:{{ $pAfetados }}%"></div></div>
+                </div>
+                @foreach(['critica'=>['Críticas','rc-critica'],'alta'=>['Altas','rc-alta'],'media'=>['Médias','rc-media'],'baixa'=>['Baixas','rc-baixa']] as $nivel=>[$rotulo,$classe])
+                    @php
+                        $quantidade = $pendenciasEquipamentosPorPrioridade[$nivel] ?? 0;
+                        $porcentagem = $pct($quantidade,$instaladosPendencias);
+                    @endphp
+                    <div class="rank-card {{ $classe }}">
+                        <small>{{ $rotulo }}</small>
+                        <div class="rank-card-top"><span class="rank-card-number">{{ $quantidade }}</span><span class="rank-card-percent">{{ number_format($porcentagem,1,',','.') }}%</span></div>
+                        <div class="rank-card-sub">de {{ $instaladosPendencias }} instalados · {{ $pendenciasPorPrioridade[$nivel] ?? 0 }} ocorrências</div>
+                        <div class="rank-track"><div class="rank-fill" style="--pct:{{ $porcentagem }}%"></div></div>
+                    </div>
                 @endforeach
             </div>
+            <p class="rank-legend"><strong>Legenda:</strong> % = equipamentos distintos com pendência ÷ equipamentos instalados na localização filtrada. Um equipamento pode ter várias pendências, inclusive em prioridades distintas. Os cards mostram todas as prioridades, mesmo quando a tabela é filtrada por uma delas.</p>
             <p class="rank-small">Exibindo as 10 primeiras pendências de acordo com a prioridade selecionada.</p>
             <div class="rank-scroll"><table class="rank-table">
                 <thead><tr>
@@ -93,10 +131,19 @@
             <h2>2. Diâmetros dos rodeiros</h2>
             <p class="rank-description">Rodeiros instalados cujo menor diâmetro LR/LO é inferior a 745 mm, ordenados pelo menor diâmetro.</p>
             @include('ranking.partials.filtros', ['prefixo'=>'d','mostrarPrioridade'=>false])
+
             <div class="rank-cards">
-                <div class="rank-card"><strong>{{ $totalDiametros }}</strong><small>Diâmetros abaixo de 745 mm</small></div>
-                <div class="rank-card"><strong>{{ $diametrosCriticos }}</strong><small>Críticos — menor ou igual a 742 mm</small></div>
+                @foreach([['Abaixo de 745 mm',$totalDiametros,'rc-atencao'],['Críticos · até 742 mm',$diametrosCriticos,'rc-critica']] as [$rotulo,$quantidade,$classe])
+                    @php $porcentagem=$pct($quantidade,$instaladosDiametros); @endphp
+                    <div class="rank-card {{ $classe }}">
+                        <small>{{ $rotulo }}</small>
+                        <div class="rank-card-top"><span class="rank-card-number">{{ $quantidade }}</span><span class="rank-card-percent">{{ number_format($porcentagem,1,',','.') }}%</span></div>
+                        <div class="rank-card-sub">de {{ $instaladosDiametros }} rodeiros instalados</div>
+                        <div class="rank-track"><div class="rank-fill" style="--pct:{{ $porcentagem }}%"></div></div>
+                    </div>
+                @endforeach
             </div>
+            <p class="rank-legend"><strong>Legenda:</strong> percentual sobre os rodeiros instalados após os filtros desta tabela. Os críticos (≤742 mm) estão incluídos no total abaixo de 745 mm.</p>
             <p class="rank-small">Exibindo os 10 menores diâmetros com os filtros aplicados.</p>
             <div class="rank-scroll"><table class="rank-table">
                 <thead><tr><th>Classificação</th><th>Trem</th><th>Carro–posição</th><th>Série</th><th>LR (mm)</th><th>LO (mm)</th><th>Menor (mm)</th><th>Ações</th></tr></thead>
@@ -128,11 +175,19 @@
             <h2>{{ $tipo === 'rodeiro' ? '3' : '2' }}. Periodicidade dos {{ $tipo === 'rodeiro' ? 'rodeiros' : 'motores' }}</h2>
             <p class="rank-description">Periodicidade vencida (maior ou igual a 100%), ordenada do maior percentual para o menor.</p>
             @include('ranking.partials.filtros', ['prefixo'=>'r','mostrarPrioridade'=>false])
+
             <div class="rank-cards">
-                <div class="rank-card"><strong>{{ $totalPeriodicidades }}</strong><small>Periodicidade ≥ 100%</small></div>
-                <div class="rank-card"><strong>{{ $periodicidades105 }}</strong><small>Periodicidade ≥ 105%</small></div>
-                <div class="rank-card"><strong>{{ $periodicidades110 }}</strong><small>Periodicidade ≥ 110%</small></div>
+                @foreach([['≥ 100%',$totalPeriodicidades,'rc-total'],['≥ 105%',$periodicidades105,'rc-atencao'],['≥ 110%',$periodicidades110,'rc-critica']] as [$rotulo,$quantidade,$classe])
+                    @php $porcentagem=$pct($quantidade,$instaladosPeriodicidade); @endphp
+                    <div class="rank-card {{ $classe }}">
+                        <small>Periodicidade {{ $rotulo }}</small>
+                        <div class="rank-card-top"><span class="rank-card-number">{{ $quantidade }}</span><span class="rank-card-percent">{{ number_format($porcentagem,1,',','.') }}%</span></div>
+                        <div class="rank-card-sub">de {{ $instaladosPeriodicidade }} {{ $tipo === 'rodeiro' ? 'rodeiros' : 'motores' }} instalados</div>
+                        <div class="rank-track"><div class="rank-fill" style="--pct:{{ $porcentagem }}%"></div></div>
+                    </div>
+                @endforeach
             </div>
+            <p class="rank-legend"><strong>Legenda:</strong> porcentagem sobre os equipamentos instalados após os filtros de periodicidade. Faixas cumulativas: ≥110% também integra ≥105% e ≥100%. Itens sem medição contam no total instalado.</p>
             <p class="rank-small">Exibindo os 10 maiores percentuais com os filtros aplicados.</p>
             <div class="rank-scroll"><table class="rank-table">
                 <thead><tr><th>Posição no ranking</th><th>Trem</th><th>Carro–posição</th><th>Série</th><th>Periodicidade</th><th>Ações</th></tr></thead>
