@@ -237,3 +237,13 @@ php artisan test
 Verificar visualmente os menus como administrador, gestor e técnico, no desktop e em largura reduzida. O menu Administração deve aparecer somente para administrador, e o dropdown não deve substituir o controle de acesso aplicado às rotas.
 
 **Situação:** implementação e testes enviados ao GitHub; validação no Laragon pendente.
+
+## 11. Dashboard gerencial como página inicial
+
+A rota autenticada `/dashboard` (nome `dashboard`) passou a utilizar `DashboardGerencialController::index`, que também atende `/indicadores`. Com isso, a aplicação exibe a mesma visão geral de indicadores ao entrar no sistema, ao clicar em **Início** ou na marca **SGR-M**, sem manter duas implementações distintas do painel.
+
+O endereço raiz `/` continua direcionando visitantes ao login e usuários autenticados para `/dashboard`. O controlador de login preserva `redirect()->intended(route('dashboard'))`, portanto o comportamento pós-autenticação também leva aos indicadores. A lógica de filtros e permissões do dashboard permanece a mesma.
+
+Teste adicionado em `DashboardGerencialTest`: acesso anônimo, redirecionamento autenticado, indicadores visíveis e funcionamento do filtro por frota. A view inicial anterior (`resources/views/dashboard.blade.php`) deixa de ser usada nessa navegação, mas não precisa ser excluída nesta alteração.
+
+**Validação:** executar `php artisan test --filter=DashboardGerencialTest` e `php artisan test`; confirmar o redirecionamento após login e o conteúdo exibido por Início e pela marca do sistema.
