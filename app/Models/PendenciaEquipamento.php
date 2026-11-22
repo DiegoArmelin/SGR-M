@@ -12,13 +12,19 @@ class PendenciaEquipamento extends Model
     protected $table = 'pendencias_equipamentos';
 
     protected $fillable = [
-        'rodeiro_id', 'motor_id', 'descricao', 'prioridade', 'situacao',
+        'eixo_id', 'rodeiro_id', 'motor_id', 'descricao', 'prioridade', 'situacao',
         'registrado_por', 'resolvida_em', 'observacoes_resolucao',
     ];
 
     protected function casts(): array
     {
         return ['resolvida_em' => 'datetime'];
+    }
+
+    /** Posição original onde o problema foi registrado. */
+    public function eixo(): BelongsTo
+    {
+        return $this->belongsTo(Eixo::class);
     }
 
     public function rodeiro(): BelongsTo
