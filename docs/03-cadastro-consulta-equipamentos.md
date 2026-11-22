@@ -1,134 +1,109 @@
-# SGR-M — Entrega 03: Cadastro e Consulta de Equipamentos
+# SGR-M — Entrega 03: Cadastro e consulta de equipamentos
 
-**Projeto:** Sistema de Gestão de Rodeiros e Motores (SGR-M)  
-**Disciplina:** Laboratório de Engenharia de Software — Fatec São Paulo  
+**Projeto:** SGR-M — Grupo 10 — Fatec São Paulo  
+**Disciplina:** Laboratório de Engenharia de Software  
+**Entrega:** 03 — Cadastro e consulta (desenvolvimento incremental)  
 **Branch:** `feature/entrega-03-consulta-equipamentos`  
-**Estado:** implementação parcial; consultas, frotas e trens desenvolvidos; testes automatizados reportados pelo desenvolvedor para os recursos iniciais; validação visual e módulos restantes pendentes.
+**Situação:** consulta de rodeiros/motores e CRUD de frotas/trens implementados; testes dos recursos informados como aprovados no ambiente local. Cadastro e consulta de carros/eixos ainda pendentes de interface.
 
 ## 1. Objetivo
 
-Disponibilizar a consulta paginada de rodeiros e motores por número de série e situação, bem como gerenciamento de frotas e trens com restrições de acesso e integridade relacional. A estrutura hierárquica completa será expandida para carros e eixos, sem alterar a modelagem relacional original.
+Adicionar interfaces e controladores às tabelas criadas na Entrega 01, reaproveitando a autenticação e os perfis da Entrega 02. O recorte atual permite pesquisar rodeiros/motores e gerenciar frotas e trens com validações, paginação e restrições de acesso. A carga inicial de frotas, trens, carros e eixos é uma subetapa documentada separadamente em [03-carga-inicial-frotas.md](03-carga-inicial-frotas.md).
 
-## 2. Arquitetura da solução
+## 2. Regras de negócio
 
-Padrão MVC do Laravel:
-- **Model:** `Frota`, `Trem`, `Rodeiro` e `Motor` representam tabelas e relacionamentos Eloquent.
-- **Controller:** recebem requisições, validam parâmetros, executam consultas ou persistência e retornam respostas.
-- **View (Blade):** apresentam formulários, filtros, resultados e mensagens ao usuário.
-- **Routes / Middleware:** associam URLs a métodos e verificam autenticação e autorização.
-- **Feature tests:** exercitam rotas HTTP, validação de entrada, permissões e alterações no banco em memória.
-
-## 3. Inventário: arquivos criados
-
-| Arquivo | Finalidade |
+| Operação | Regra |
 |---|---|
-| `app/Http/Controllers/ConsultaEquipamentosController.php` | Consulta de rodeiros ou motores, com filtros e paginação. |
-| `resources/views/equipamentos/index.blade.php` | Interface de busca e tabela de resultados. |
-| `tests/Feature/ConsultaEquipamentosTest.php` | Testes de acesso, filtro por série e tipo inválido. |
-| `app/Http/Controllers/FrotaController.php` | Operações CRUD de frotas e validação das regras de exclusão. |
-| `app/Http/Controllers/TremController.php` | Operações CRUD de trens e vínculo com frota. |
-| `resources/views/frotas/index.blade.php` | Listagem paginada de frotas, status e número de trens associados. |
-| `resources/views/frotas/form.blade.php` | Formulário reutilizado para cadastrar e editar frotas. |
-| `resources/views/trens/index.blade.php` | Listagem paginada e filtros de trens por frota e código. |
-| `resources/views/trens/form.blade.php` | Formulário reutilizado para cadastrar e editar trens. |
-| `tests/Feature/CadastroFrotasTrensTest.php` | Oito testes de acesso, cadastro, unicidade, filtro e integridade. |
-| `docs/03-cadastro-consulta-equipamentos.md` | Documentação técnica desta entrega. |
+| Consulta de rodeiros/motores | Filtro por tipo, série total/parcial e status; sem escrita |
+| Frota | Código obrigatório, único e de até 10 caracteres |
+| Trem | Código obrigatório, único globalmente e de até 20 caracteres |
+| Vínculo trem–frota | Frota existente e ativa para novo trem |
+| Transferência de trem | Não permite mover para outra frota inativa |
+| Exclusão de frota | Bloqueada se houver trens vinculados |
+| Exclusão de trem | Bloqueada se houver carros vinculados |
+| Desativação | Mantém registro e vínculos, sem excluir histórico |
+| Autorização | Todos os perfis consultam; apenas administrador cadastra, edita ou exclui frotas/trens |
 
-## 4. Arquivos existentes alterados
+Consultas de equipamentos são paginadas em 20 registros; listagens de frotas/trens, em 15. O sistema ainda não expõe uma consulta hierárquica completa até o eixo.
 
-| Arquivo | Alteração |
+## 3. Arquivos e responsabilidades
+
+| Arquivo | Responsabilidade |
 |---|---|
-| `routes/web.php` | GETs de consulta e rotas de escrita para frotas e trens, com middlewares `auth` e `perfil`. |
-| `resources/views/layouts/app.blade.php` | Links na navegação para consulta de equipamentos, frotas e trens. |
-| `tests/Feature/ExampleTest.php` | Substituição do teste genérico por testes de redirecionamento de visitante/autenticado. |
-| `database/migrations/2026_11_02_153616_create_instalacao_rodeiros_table.php` | Substituição de `IF()` por `CASE WHEN` nas colunas geradas, compatível com SQLite em testes e MySQL. |
-| `database/migrations/2026_11_02_154221_create_instalacao_motors_table.php` | Mesma compatibilidade para instalações de motores. |
-| `app/Http/Controllers/FrotaController.php`, `TremController.php` e `ConsultaEquipamentosController.php` | Comentários explicativos sobre métodos, validações e regras de negócio. |
+| `app/Http/Controllers/ConsultaEquipamentosController.php` | Valida filtros e consulta rodeiros ou motores |
+| `app/Http/Controllers/FrotaController.php` | CRUD de frotas e integridade na exclusão |
+| `app/Http/Controllers/TremController.php` | CRUD de trens, filtros e regras de vínculo |
+| `resources/views/equipamentos/index.blade.php` | Formulário de busca e resultados |
+| `resources/views/frotas/index.blade.php` | Listagem e operações de frotas |
+| `resources/views/frotas/form.blade.php` | Formulário único de criação/edição de frota |
+| `resources/views/trens/index.blade.php` | Listagem filtrada de trens |
+| `resources/views/trens/form.blade.php` | Formulário único de criação/edição de trem |
+| `tests/Feature/ConsultaEquipamentosTest.php` | Três testes de consulta e autorização |
+| `tests/Feature/CadastroFrotasTrensTest.php` | Oito testes de cadastro, filtros e permissões |
+| `routes/web.php` | Definição e proteção das rotas |
+| `resources/views/layouts/app.blade.php` | Navegação para as novas páginas |
+| `tests/Feature/ExampleTest.php` | Dois testes de redirecionamento da página inicial |
 
-As migrations antigas foram ajustadas apenas em sua expressão SQL. **Não** executar `migrate:fresh` no banco com dados: esse comando elimina e recria tabelas.
+**Adequação de compatibilidade:** duas migrations existentes de instalações (rodeiros e motores) tiveram as expressões SQL `IF()` substituídas por `CASE WHEN` para permitir os testes com SQLite. Isso não altera a finalidade das colunas geradas e índices de unicidade.
 
-## 5. Métodos e suas responsabilidades
+## 4. Métodos e recursos de programação
 
-### ConsultaEquipamentosController
+| Classe | Método | Responsabilidade |
+|---|---|---|
+| `ConsultaEquipamentosController` | `index(Request)` | Valida entrada, seleciona Model, aplica filtros e pagina |
+| `FrotaController` | `index()` | Lista frotas e total de trens |
+| `FrotaController` | `create()` / `edit(Frota)` | Exibe o formulário no modo correto |
+| `FrotaController` | `store(Request)` / `update(Request,Frota)` | Valida e grava dados |
+| `FrotaController` | `destroy(Frota)` | Impede excluir frota com trens |
+| `FrotaController` | `validar(Request,?Frota)` | Centraliza obrigatoriedade, tamanho e unicidade |
+| `TremController` | `index(Request)` | Aplica filtros de frota/código e pagina |
+| `TremController` | `create()` / `edit(Trem)` | Exibe o formulário com opções de frota |
+| `TremController` | `store(Request)` / `update(Request,Trem)` | Valida campos e vínculo com frota |
+| `TremController` | `destroy(Trem)` | Impede excluir trem com carros |
+| `TremController` | `validar(Request,?Trem)` | Regras de entrada e unicidade |
 
-- `index(Request $request)`: valida `tipo`, `numero_serie` e `status`; seleciona `Motor` ou `Rodeiro` via Eloquent; aplica filtro parcial pelo número de série e exato por status; ordena por série; pagina 20 resultados; renderiza `equipamentos.index`.
+**Recursos importantes:** `Request::validate()` rejeita parâmetros inválidos; `Rule::unique()->ignore()` permite editar o código sem conflito consigo mesmo; `with()` evita consultas repetidas de relações; `withCount()` calcula total de associados; `paginate()` limita registros; `withQueryString()` mantém filtros na navegação; Route Model Binding recebe Models automaticamente pelo identificador da URL.
 
-### FrotaController
-
-- `index()`: lista frotas, calcula a quantidade de trens associados com `withCount()`, ordena e pagina.
-- `create()`: entrega o formulário com objeto novo de `Frota`.
-- `store(Request)`: valida código/descrição/atividade e persiste frota.
-- `edit(Frota)`: carrega frota por Route Model Binding e exibe o formulário.
-- `update(Request, Frota)`: valida os novos dados, preservando a própria chave na regra de unicidade, e atualiza.
-- `destroy(Frota)`: não exclui frota com trens vinculados; caso contrário, exclui e informa o resultado.
-- `validar(Request, ?Frota)`: centraliza as validações, inclusive unicidade de `codigo` com `Rule::unique()->ignore()`.
-
-### TremController
-
-- `index(Request)`: valida filtros; consulta trens com a frota relacionada (`with()`) e contagem de carros (`withCount()`), ordena e pagina.
-- `create()`: envia frotas ativas ao formulário.
-- `store(Request)`: valida código, frota, descrição e atividade; só cadastra em frota ativa.
-- `edit(Trem)`: exibe edição e inclui a frota atual nas opções, mesmo se inativa.
-- `update(Request, Trem)`: valida os dados; permite manter o vínculo atual, mas impede transferir para outra frota inativa.
-- `destroy(Trem)`: bloqueia exclusão se existirem carros vinculados.
-- `validar(Request, ?Trem)`: centraliza validação e unicidade global do código do trem.
-
-## 6. Regras de negócio
-
-- Código de frota: obrigatório, único, até 10 caracteres.
-- Código de trem: obrigatório, único no sistema, até 20 caracteres.
-- Trem deve pertencer a uma frota existente.
-- Novos trens só podem ser cadastrados em frotas ativas.
-- Não é permitido mover um trem para outra frota inativa.
-- Frota com trens não pode ser excluída.
-- Trem com carros não pode ser excluído.
-- A desativação é alternativa à exclusão quando há dependências. Desativar não apaga histórico ou relacionamentos.
-- Rodeiros e motores são consultados pelos valores cadastrais; nesta fase, a consulta não altera equipamentos.
-
-## 7. Perfis e segurança
-
-| Operação | Administrador | Gestor | Técnico |
-|---|---|---|---|
-| Consultar frotas/trens/equipamentos | Sim | Sim | Sim |
-| Criar, editar e excluir frotas/trens | Sim | Não | Não |
-
-As permissões são verificadas **no servidor** pelo middleware `perfil`; ocultar botões na interface é apenas uma segunda camada de experiência do usuário. Formulários incluem proteção CSRF; ações de atualização e exclusão usam os verbos HTTP correspondentes.
-
-## 8. Fluxo de uma operação (exemplo)
-
-1. O administrador faz login e abre `/frotas/criar`.
-2. O middleware verifica sessão e perfil.
-3. O controller `create()` apresenta a view `frotas.form`.
-4. A view envia um POST com token CSRF para a rota `frotas.store`.
-5. O método `store()` chama `validar()`, constrói os atributos e cria `Frota`.
-6. O sistema retorna à listagem com mensagem de confirmação.
-
-## 9. Testes e evidências
-
-Na execução informada no Laragon em 22/11/2026, `CadastroFrotasTrensTest` teve **8 testes aprovados**, e `ConsultaEquipamentosTest` teve **3 testes aprovados**. O teste genérico `ExampleTest` falhou por esperar status HTTP 200 na rota `/` (que corretamente redireciona com 302). Esse teste foi posteriormente atualizado para verificar os redirecionamentos de visitante e autenticado, mas **a suíte completa após a atualização ainda precisa ser executada e confirmada no ambiente local**.
-
-Comandos para repetir a validação:
+## 5. Procedimento de execução no Laragon
 
 ```bash
+git switch feature/entrega-03-consulta-equipamentos
 git pull origin feature/entrega-03-consulta-equipamentos
 php artisan route:list
 php artisan test
 ```
 
-Avaliar também manualmente: formulário de frota, cadastro de trem, filtro, mensagens de erro, tentativas de acesso por técnico/gestor e exclusão com dependências.
+Com Laravel em execução, acessar `/equipamentos`, `/frotas` e `/trens` após login. Para operações de cadastro/alteração, usar conta com perfil `administrador`.
 
-## 10. Próximas atividades
+**Não executar `migrate:fresh` no banco com dados.** Os controllers da Entrega 03 utilizam tabelas já criadas na Entrega 01.
 
-Implementação de carros e eixos, cadastro de rodeiros e motores, consulta hierárquica (frota → trem → carro → eixo), movimentação com preservação de histórico, pendências técnicas e priorização.
+## 6. Verificação funcional
 
-## 11. Pontos para explicar na apresentação
+1. Entrar como administrador e cadastrar uma frota por `/frotas/criar`.
+2. Acessar `/trens/criar`, selecionar a frota e cadastrar um trem.
+3. Conferir filtro por frota e código; verificar número de trens e carros exibidos.
+4. Tentar cadastrar código duplicado para confirmar a validação.
+5. Tentar excluir uma frota com trem para confirmar bloqueio.
+6. Entrar como gestor ou técnico e verificar que as consultas funcionam, mas as rotas de escrita retornam HTTP 403.
+7. Pesquisar rodeiro/motor por série e status; conferir tratamento de listagem vazia.
 
-- **MVC:** separação entre Model, View e Controller.
-- **Eloquent ORM:** mapeamento objeto-relacional e relacionamentos.
-- **Integridade:** restrições de unicidade, chaves estrangeiras e regras de exclusão.
-- **Autenticação x autorização:** login identifica usuário, middleware define o que cada perfil pode fazer.
-- **Testes de funcionalidade:** simulação de requisições HTTP, validação de resposta e estado do banco.
-- **Git:** trabalho isolado em branch e integração revisada por Pull Request.
-- **Evolução incremental:** cada entrega acrescenta funcionalidade verificável à estrutura anterior.
+## 7. Testes, evidências e limitações
 
-**Limitação:** ainda não houve execução de interface em navegador pelo assistente nem confirmação de adequação para produção. O projeto utiliza dados fictícios.
+**Confirmado pelo desenvolvedor no Laragon:** `CadastroFrotasTrensTest`: 8 testes aprovados; `ConsultaEquipamentosTest`: 3 testes aprovados. Um teste de exemplo inicialmente esperava HTTP 200 na rota `/`, mas a aplicação passou a redirecionar (HTTP 302). O teste foi ajustado para verificar login/dashboard. O desenvolvedor posteriormente informou que os testes estavam **OK**, sem fornecer nova saída detalhada da suíte após a atualização.
+
+**Carga de estrutura:** o Seeder de frotas I, J e L e os testes próprios estão descritos no documento [03-carga-inicial-frotas.md](03-carga-inicial-frotas.md). O desenvolvedor informou que os testes dessa subetapa passaram.
+
+**Pendências:** interfaces para carros/eixos, cadastro de rodeiros e motores, consulta de localização hierárquica, serviços de instalação/retirada e movimentação, importação CSV, pendências e priorização. A execução visual completa das interfaces não foi verificada por este relatório.
+
+## 8. Conceitos acadêmicos aplicados e pontos para apresentação
+
+- **MVC:** separação entre consulta/validação (controllers), persistência (models) e apresentação (views).
+- **Eloquent ORM:** queries, relações, filtros e contagem dos dependentes.
+- **CRUD:** operações de criação, leitura, atualização e exclusão.
+- **Integridade referencial:** bloqueio de exclusão com dependências.
+- **RBAC:** permissão controlada pelo middleware de perfil.
+- **Validação de entrada:** regras de unicidade, obrigatoriedade e vínculos.
+- **Testes Feature:** respostas HTTP, autorização e persistência.
+- **Git e evolução incremental:** alterações em branch de funcionalidade e revisão por Pull Request.
+
+**Resumo para apresentar:** “A Entrega 03 tornou operacionais a consulta de equipamentos e os cadastros de frotas/trens, utilizando Models existentes, proteção por perfil e testes automatizados; a expansão para carros/eixos permanece como próximo passo.”
