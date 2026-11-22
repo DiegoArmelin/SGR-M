@@ -222,6 +222,7 @@
             <div class="brand">SGR-M</div>
 
             <div class="navbar-right">
+                <a href="{{ route('equipamentos.index') }}" style="color:white; text-decoration:underline;">Consultar equipamentos</a>
                 <div class="user-info">
                     {{ auth()->user()->name }}
                     |
