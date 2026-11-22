@@ -76,6 +76,36 @@ class DashboardGerencialTest extends TestCase
         }
     }
 
+    /** A página inicial passa a utilizar o dashboard gerencial, inclusive após login. */
+    public function test_pagina_inicial_exibe_indicadores_e_mantem_filtro_de_frota(): void
+    {
+        $this->get('/')->assertRedirect(route('login'));
+
+        $this->instalar('I', 'I01');
+        $this->instalar('J', 'J26');
+
+        $this->actingAs($this->gestor())
+            ->get('/')
+            ->assertRedirect(route('dashboard'));
+
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Dashboard Gerencial do SGR-M')
+            ->assertSee('Total de equipamentos instalados')
+            ->assertDontSee('Painel Principal')
+            ->assertViewHas('dados', fn ($d) =>
+                $d['instalados']['rodeiro'] === 2 &&
+                $d['instalados']['motor'] === 2
+            );
+
+        $this->get(route('dashboard', ['frota' => 'I']))
+            ->assertOk()
+            ->assertViewHas('dados', fn ($d) =>
+                $d['instalados']['rodeiro'] === 1 &&
+                $d['instalados']['motor'] === 1
+            );
+    }
+
     /** Condições são contadas só para instalações ativas. */
     public function test_contabiliza_instalados_condicoes_e_diametro_critico(): void
     {
