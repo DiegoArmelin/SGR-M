@@ -61,9 +61,9 @@ Cada tabela apresenta os **10 primeiros registros** após seus próprios filtros
 
 A aplicação permite substituir rodeiros e motores por número de série, selecionar peças em estoque, registrar motivos de retirada por tipo, atualizar os status e preservar o histórico de instalações em transação.
 
-### 4.6. Dashboard e indicadores — parcialmente implementado
+### 4.6. Dashboard e indicadores — versão ampliada (testes pendentes)
 
-Foi criada uma **página inicial autenticada**, com identificação do usuário e cartões informativos dos módulos. Os indicadores operacionais reais e as consultas consolidadas permanecem pendentes.
+O Módulo 06 oferece a aba **Visão geral**, com parque de rodeiros e motores instalados, condições de diâmetro e periodicidade, pendências críticas/altas e pendências encerradas nos últimos 30 dias. A aba **Histórico de substituições** apresenta gráficos dos últimos seis meses, distribuição por motivos e comparação por frotas, com filtros e versão de impressão para **Salvar como PDF**. Um seeder específico gera 24 meses de movimentos totalmente fictícios (25 rodeiros e 20 motores por mês), sem modificar as instalações ativas.
 
 ### 4.7. Autenticação e controle de acesso — implementada
 
@@ -143,7 +143,8 @@ As restrições de exclusividade de instalações ativas utilizam **colunas gera
 | Atual | Gestão de pendências técnicas | Implementação inicial; testes pendentes |
 | 04 | Importação de condições dos rodeiros CSV | Implementação enviada ao GitHub, aguardando testes |
 | 05 | Abas e rankings separados de pendências, diâmetros e periodicidade | Versão anterior validada; nova interface aguardando testes |
-| Futuras | Indicadores e funcionalidades administrativas | Planejadas |
+| 06 | Dashboard gerencial de indicadores | Código implementado, testes pendentes |
+| Futuras | Relatórios exportáveis, validação integrada e entrega final | Planejadas |
 
 ### Concluído
 
@@ -327,6 +328,7 @@ Os relatórios detalhados ficam na pasta [`docs/`](docs/):
 - [Entrega 03 — Gestão de Pendências Técnicas](docs/03-gestao-pendencias.md).
 - [Entrega 04 — Importação de Condições CSV](docs/04-importacao-periodicidade-csv.md).
 - [Entrega 05 — Ranking de Priorização](docs/05-ranking-priorizacao.md).
+- [Módulo 06 — Dashboard Gerencial e Histórico](docs/06-dashboard-gerencial.md).
 
 Os documentos descrevem as decisões técnicas, os componentes implementados, os testes manuais e as limitações de cada etapa.
 
@@ -347,3 +349,4 @@ A autenticação e o controle de perfis constituem uma camada inicial de seguran
 ---
 
 **SGR-M — Grupo 10 | Fatec São Paulo | 2026**
+

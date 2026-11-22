@@ -109,7 +109,10 @@
                         <td><strong>{{ $item->carro }}-{{ $item->posicao }}</strong></td>
                         <td>{{ $item->numero_serie }}</td>
                         <td>{{ $item->motivo_catalogo ?? $item->descricao }}
-                            @if($item->observacoes)<div class="rank-small">{{ $item->observacoes }}</div>@endif
+                            {{-- Oculta apenas a observação técnica usada na carga fictícia. --}}
+                            @if($item->observacoes && trim($item->observacoes) !== 'Carga acadêmica para testes de filtros e dashboard.')
+                                <div class="rank-small">{{ $item->observacoes }}</div>
+                            @endif
                         </td>
                         <td class="rank-action">
                             @if(auth()->user()->temPerfil('administrador','tecnico'))

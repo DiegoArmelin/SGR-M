@@ -18,15 +18,15 @@ class MotivosRetiradaTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** O catálogo contém nove motivos de rodeiro e cinco de motor. */
+    /** O catálogo contém nove motivos de rodeiro e seis de motor. */
     public function test_carga_de_motivos_e_idempotente(): void
     {
         $this->seed(MotivosRetiradaSeeder::class);
         $this->seed(MotivosRetiradaSeeder::class);
 
         $this->assertSame(9, MotivoRetirada::where('tipo_equipamento', 'rodeiro')->count());
-        $this->assertSame(5, MotivoRetirada::where('tipo_equipamento', 'motor')->count());
-        $this->assertSame(14, MotivoRetirada::count());
+        $this->assertSame(6, MotivoRetirada::where('tipo_equipamento', 'motor')->count());
+        $this->assertSame(15, MotivoRetirada::count());
     }
 
     /** O formulário não lista os motivos do outro tipo de equipamento. */

@@ -10,6 +10,7 @@ use App\Http\Controllers\MovimentacaoEquipamentoController;
 use App\Http\Controllers\PendenciaEquipamentoController;
 use App\Http\Controllers\ImportacaoPeriodicidadeController;
 use App\Http\Controllers\RankingPriorizacaoController;
+use App\Http\Controllers\DashboardGerencialController;
 
 /*
 |--------------------------------------------------------------------------
@@ -56,10 +57,11 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
 
-    // Dashboard principal.
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    // Central de funcionalidades: a página inicial oferece atalhos por perfil.
+    // O dashboard de indicadores permanece independente em /indicadores.
+    Route::view('/dashboard', 'dashboard')
+        ->middleware('perfil:administrador,gestor,tecnico')
+        ->name('dashboard');
 
     // Consulta permitida aos três perfis autenticados.
     Route::get('/equipamentos', [ConsultaEquipamentosController::class, 'index'])
@@ -70,6 +72,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/equipamentos/hierarquica', [ConsultaHierarquicaController::class, 'index'])
         ->middleware('perfil:administrador,gestor,tecnico')
         ->name('equipamentos.hierarquica');
+
+    // Dashboard gerencial somente leitura, disponível aos três perfis.
+    Route::get('/indicadores', [DashboardGerencialController::class, 'index'])
+        ->middleware('perfil:administrador,gestor,tecnico')
+        ->name('dashboard.gerencial');
+
+    // Aba histórica e relatório imprimível preservam os filtros selecionados.
+    Route::get('/indicadores/historico', [DashboardGerencialController::class, 'historico'])
+        ->middleware('perfil:administrador,gestor,tecnico')
+        ->name('dashboard.historico');
+    Route::get('/indicadores/historico/imprimir', [DashboardGerencialController::class, 'imprimirHistorico'])
+        ->middleware('perfil:administrador,gestor,tecnico')
+        ->name('dashboard.historico.imprimir');
 
     // Ranking consolidado de pendências e condições: leitura para os três perfis.
     Route::get('/ranking', [RankingPriorizacaoController::class, 'index'])
