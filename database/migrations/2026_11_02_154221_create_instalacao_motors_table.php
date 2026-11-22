@@ -31,14 +31,14 @@ return new class extends Migration
             $table->unsignedBigInteger('eixo_ativo')
                 ->nullable()
                 ->storedAs(
-                    'IF(data_retirada IS NULL, eixo_id, NULL)'
+                    'CASE WHEN data_retirada IS NULL THEN eixo_id ELSE NULL END'
                 );
 
             // Identifica o motor com instalação ativa.
             $table->unsignedBigInteger('motor_ativo')
                 ->nullable()
                 ->storedAs(
-                    'IF(data_retirada IS NULL, motor_id, NULL)'
+                    'CASE WHEN data_retirada IS NULL THEN motor_id ELSE NULL END'
                 );
 
             $table->timestamps();
