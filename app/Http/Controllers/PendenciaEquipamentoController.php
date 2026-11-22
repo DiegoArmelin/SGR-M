@@ -40,11 +40,19 @@ class PendenciaEquipamentoController extends Controller
     }
 
     /** Formulário para selecionar o tipo, a série e a prioridade da pendência. */
-    public function create(): View
+    public function create(Request $request): View
     {
+        // A consulta de sugestões depende do tipo selecionado, evitando carregar
+        // simultaneamente as milhares de séries dos dois tipos de equipamento.
+        $filtros = $request->validate([
+            'tipo' => ['nullable', Rule::in(['rodeiro', 'motor'])],
+        ]);
+        $tipo = $filtros['tipo'] ?? 'rodeiro';
+        $modelo = $tipo === 'rodeiro' ? Rodeiro::class : Motor::class;
+
         return view('pendencias.create', [
-            'rodeiros' => Rodeiro::orderBy('numero_serie')->pluck('numero_serie'),
-            'motores' => Motor::orderBy('numero_serie')->pluck('numero_serie'),
+            'tipo' => $tipo,
+            'series' => $modelo::orderBy('numero_serie')->pluck('numero_serie'),
         ]);
     }
 
