@@ -17,7 +17,7 @@ class ConsultaEquipamentosController extends Controller
         $filtros = $request->validate([
             'tipo' => ['nullable', 'in:rodeiro,motor'],
             'numero_serie' => ['nullable', 'string', 'max:50'],
-            'status' => ['nullable', 'in:disponivel,instalado,em_manutencao,inativo'],
+            'status' => ['nullable', 'in:estoque,instalado,em_manutencao,inativo'],
         ]);
 
         $tipo = $filtros['tipo'] ?? 'rodeiro';
