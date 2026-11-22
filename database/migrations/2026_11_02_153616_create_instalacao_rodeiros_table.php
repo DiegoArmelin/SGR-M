@@ -32,7 +32,7 @@ return new class extends Migration
             $table->unsignedBigInteger('eixo_ativo')
                 ->nullable()
                 ->storedAs(
-                    'IF(data_retirada IS NULL, eixo_id, NULL)'
+                    'CASE WHEN data_retirada IS NULL THEN eixo_id ELSE NULL END'
                 );
 
             // Retorna o rodeiro_id apenas quando a
@@ -40,7 +40,7 @@ return new class extends Migration
             $table->unsignedBigInteger('rodeiro_ativo')
                 ->nullable()
                 ->storedAs(
-                    'IF(data_retirada IS NULL, rodeiro_id, NULL)'
+                    'CASE WHEN data_retirada IS NULL THEN rodeiro_id ELSE NULL END'
                 );
 
             $table->timestamps();
