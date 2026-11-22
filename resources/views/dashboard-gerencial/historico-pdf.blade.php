@@ -27,6 +27,7 @@
     <div class="pdf-header">
         <h1>SGR-M — Histórico de substituições</h1>
         <p>Relatório gerado em {{ now()->format('d/m/Y H:i') }} — dados do sistema</p>
+        <p class="pdf-note">A base de demonstração pode conter registros fictícios identificados por HIST. Este relatório não comprova eventos operacionais reais.</p>
         <p>
             Período: {{ $filtros['inicio'] ?? 'Início do histórico' }} a {{ $filtros['fim'] ?? 'Data atual' }}
             · Frota: {{ $filtros['frota'] ?? 'Todas' }}
