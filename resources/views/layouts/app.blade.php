@@ -226,6 +226,9 @@
                 <a href="{{ route('trens.index') }}" style="color:white; text-decoration:underline;">Trens</a>
                 <a href="{{ route('equipamentos.hierarquica') }}" style="color:white; text-decoration:underline;">Consulta hierárquica</a>
                 <a href="{{ route('pendencias.index') }}" style="color:white; text-decoration:underline;">Pendências</a>
+                @if(auth()->user()->temPerfil('administrador'))
+                    <a href="{{ route('importacoes.periodicidade.create') }}" style="color:white; text-decoration:underline;">Importar CSV</a>
+                @endif
                 <a href="{{ route('equipamentos.index') }}" style="color:white; text-decoration:underline;">Consultar equipamentos</a>
                 <div class="user-info">
                     {{ auth()->user()->name }}

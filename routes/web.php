@@ -8,6 +8,7 @@ use App\Http\Controllers\FrotaController;
 use App\Http\Controllers\TremController;
 use App\Http\Controllers\MovimentacaoEquipamentoController;
 use App\Http\Controllers\PendenciaEquipamentoController;
+use App\Http\Controllers\ImportacaoPeriodicidadeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -93,6 +94,17 @@ Route::middleware('auth')->group(function () {
     Route::middleware('perfil:administrador,gestor,tecnico')->group(function () {
         Route::get('/frotas', [FrotaController::class, 'index'])->name('frotas.index');
         Route::get('/trens', [TremController::class, 'index'])->name('trens.index');
+    });
+
+    // Importações de condições: alteração em massa restrita ao administrador.
+    Route::middleware('perfil:administrador')->group(function () {
+        Route::get('/importacoes/periodicidade', [ImportacaoPeriodicidadeController::class, 'create'])
+            ->name('importacoes.periodicidade.create');
+        Route::post('/importacoes/periodicidade', [ImportacaoPeriodicidadeController::class, 'store'])
+            ->name('importacoes.periodicidade.store');
+        // Exportação do último resultado acessível na sessão do administrador.
+        Route::get('/importacoes/periodicidade/relatorio.csv', [ImportacaoPeriodicidadeController::class, 'exportar'])
+            ->name('importacoes.periodicidade.exportar');
     });
 
     // Cadastros: somente administrador, com rotas estáticas antes das parametrizadas.
