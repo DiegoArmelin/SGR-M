@@ -12,13 +12,20 @@ class PendenciaEquipamento extends Model
     protected $table = 'pendencias_equipamentos';
 
     protected $fillable = [
-        'eixo_id', 'rodeiro_id', 'motor_id', 'descricao', 'prioridade', 'situacao',
+        'eixo_id', 'rodeiro_id', 'motor_id', 'motivo_retirada_id', 'descricao',
+        'observacoes', 'prioridade', 'situacao',
         'registrado_por', 'resolvida_em', 'observacoes_resolucao',
     ];
 
     protected function casts(): array
     {
         return ['resolvida_em' => 'datetime'];
+    }
+
+    /** Motivo do catálogo; registros antigos podem não possuir essa referência. */
+    public function motivoRetirada(): BelongsTo
+    {
+        return $this->belongsTo(MotivoRetirada::class, 'motivo_retirada_id');
     }
 
     /** Posição original onde o problema foi registrado. */
