@@ -1,113 +1,105 @@
-# SGR-M — Módulo 05: Ranking de priorização dos equipamentos
+# SGR-M — Módulo 05: Painel de priorização por tipo e condição
 
 **Projeto:** SGR-M — Fatec São Paulo  
 **Disciplina:** Laboratório de Engenharia de Software  
 **Branch:** `feature/modulo-5-ranking-priorizacao`  
-**Situação:** implementação publicada no GitHub, aguardando testes e validação no Laragon.
+**Situação:** versão anterior aprovada no Laragon; atualização de interface e consultas enviada ao GitHub e aguardando testes locais.
 
 ## 1. Objetivo
 
-Consolidar as pendências abertas dos rodeiros e motores instalados e os alertas de periodicidade e diâmetros dos rodeiros em uma classificação única, destinada à consulta gerencial. Cada equipamento aparece uma vez, mesmo que possua várias ocorrências.
+Organizar a consulta de priorização em abas superiores distintas para **Rodeiros** e **Motores**, separando as ocorrências técnicas das informações quantitativas de condição. Na aba de rodeiros, são exibidas três tabelas na ordem **Pendências → Diâmetros → Periodicidade**. Na aba de motores, são exibidas as pendências, pois os motores não têm diâmetro de roda nem percentual de periodicidade modelados.
 
 ## 2. Regras de negócio
 
-Ordem de precedência, da maior para a menor prioridade:
+| Bloco | Regra de seleção | Ordenação | Quantidade exibida |
+|---|---|---|---|
+| Pendências | Somente pendências abertas do equipamento atualmente instalado | Crítica, alta, média, baixa | 10 primeiras |
+| Diâmetros | Rodeiros instalados com menor diâmetro LR/LO inferior a 745 mm | Menor diâmetro primeiro | 10 primeiros |
+| Periodicidade | Rodeiros instalados com periodicidade maior ou igual a 100% | Maior percentual primeiro | 10 primeiros |
 
-| Nível | Condição | Aplica-se a |
-|---|---|---|
-| 1 | Pendência aberta **crítica** | Rodeiro e motor |
-| 2 | Pendência aberta **alta** | Rodeiro e motor |
-| 3 | Pendência aberta **média** | Rodeiro e motor |
-| 4 | Pendência aberta **baixa** | Rodeiro e motor |
-| 5 | Periodicidade **maior ou igual a 100%** | Rodeiro |
-| 6 | Menor diâmetro LR/LO **inferior a 745 mm** | Rodeiro |
+**Filtros independentes:** cada bloco possui filtros próprios de trem e carro. O bloco de pendências também oferece prioridade. Ao aplicar os filtros de diâmetro, a lista de pendências e a de periodicidade mantêm seus critérios originais. A aba seleciona rodeiros ou motores e mantém a separação por tipo.
 
-**Precedência:** se um equipamento possui pendência crítica e periodicidade superior a 100%, sua classificação principal é nível 1; o alerta de periodicidade também fica visível na lista de motivos. O mesmo equipamento nunca aparece duas vezes.
+**Cards do bloco de diâmetros:** 
+- **Total abaixo de 745 mm:** conta os rodeiros que atendem à condição após aplicação dos filtros de diâmetro.
+- **Críticos com menor diâmetro menor ou igual a 742 mm:** subconjunto da contagem anterior.
 
-Outras regras:
-- A consulta considera apenas os equipamentos vinculados a instalações abertas, isto é, com `data_retirada IS NULL`.
-- Pendências resolvidas não entram no ranking.
-- Pendências são associadas ao equipamento **e ao eixo** de origem, evitando incluir ocorrências antigas de outra posição.
-- Ações de movimentação são oferecidas somente aos perfis administrador e técnico; todos os três perfis podem visualizar o ranking.
-- Não são criadas pendências formais automaticamente em função de percentual ou diâmetro.
-- Rodeiros sem medição informada e sem pendência não entram no ranking.
-- A tabela permite filtros por frota e tipo, apresenta 30 resultados por página e mostra contagem de equipamentos por nível.
-- Dentro da mesma prioridade, o desempate usa maior periodicidade, menor diâmetro e depois posição, apenas para ordenação visual.
-- Os parâmetros são acadêmicos e não representam critério operacional ou autorização de intervenção ferroviária.
+Os cards consideram **todos os equipamentos encontrados**, mesmo que somente os 10 primeiros apareçam na tabela.
+
+As mesmas regras de instalação ativa e de rastreabilidade permanecem: pendências encerradas e equipamentos retirados não são exibidos. O mesmo rodeiro pode aparecer em tabelas diferentes (por exemplo, com pendência e diâmetro reduzido), pois os quadros são visões independentes, não mais uma classificação única. Isso não duplica registros dentro da mesma tabela.
 
 ## 3. Arquivos e responsabilidades
 
-| Arquivo | Finalidade |
+| Arquivo | Responsabilidade |
 |---|---|
-| `app/Services/RankingPriorizacaoService.php` | Consulta posições com instalações ativas, reúne pendências/medições e calcula ranking sem duplicar equipamentos |
-| `app/Http/Controllers/RankingPriorizacaoController.php` | Valida filtros e entrega lista paginada à interface |
-| `resources/views/ranking/index.blade.php` | Tabela de prioridade, filtros, contagem por nível e atalhos de consulta/substituição |
-| `tests/Feature/RankingPriorizacaoTest.php` | Testa autorização, precedência, limites, filtros e exclusão de instalações históricas |
-| `routes/web.php` | Rota GET protegida `/ranking` |
-| `resources/views/layouts/app.blade.php` | Atalho Ranking na navegação |
-| `README.md` | Atualização do estágio do projeto |
-| `docs/05-ranking-priorizacao.md` | Documentação acadêmica da entrega |
+| `app/Services/RankingPriorizacaoService.php` | Monta consultas SQL independentes, aplica filtros, contagens e `LIMIT 10` |
+| `app/Http/Controllers/RankingPriorizacaoController.php` | Valida aba, filtros e pertinência entre trem e carro |
+| `resources/views/ranking/index.blade.php` | Abas, tabelas, tags coloridas, cards e ações |
+| `resources/views/ranking/partials/filtros.blade.php` | Formulários reutilizáveis com filtros próprios |
+| `tests/Feature/RankingPriorizacaoTest.php` | Cobertura dos três quadros, abas, filtros, limites e autorização |
+| `docs/05-ranking-priorizacao.md` | Registro acadêmico da evolução |
 
-Nenhuma tabela foi criada ou modificada nesta etapa.
+Nenhuma migration ou seeder é necessária; o módulo utiliza os dados persistidos de instalações, medições e pendências.
 
-## 4. Métodos e recursos de programação
+## 4. Métodos e recursos utilizados
 
-- **`RankingPriorizacaoService::consultar(?string, ?string, int)`:** consulta a estrutura, identifica instalações ativas, agrupa pendências por equipamento/posição, define o menor nível numérico de criticidade e lista os alertas adicionais.
-- **`whereHas('carro.trem.frota', ...)`:** limita consulta à frota selecionada.
-- **`with()`:** carregamento antecipado de instalações e equipamentos para reduzir consultas repetitivas.
-- **`groupBy()`:** associa pendências abertas ao tipo, número do equipamento e eixo de origem.
-- **`min()`:** aplica a precedência; nível 1 tem prioridade sobre níveis 2–6.
-- **Accessor `Rodeiro::menor_diametro`:** utiliza o menor valor existente entre LR e LO.
-- **`LengthAwarePaginator`:** oferece páginas de 30 resultados e mantém os filtros da consulta.
-- **`RankingPriorizacaoController::index()`:** valida filtros e retorna a view, sem operações de escrita.
-- **Blade `@forelse`, `@foreach` e `@if`:** apresentam itens, motivos e controles de acordo com o perfil do usuário.
+- **`RankingPriorizacaoService::consultar(string, array)`:** retorna listas e totais para cada bloco a partir da aba selecionada.
+- **`instalacoes(string)`:** constrói os joins entre frota, trem, carro, eixo, instalação ativa e equipamento.
+- **`filtrarLocalizacao(Builder, array, string)`:** aplica filtros com prefixo **p_**, **d_** ou **r_** conforme o bloco, isolando suas seleções.
+- **`consultaPendencias()`:** seleciona somente pendências abertas cujo equipamento e eixo correspondem à instalação ativa, ordenadas por criticidade.
+- **`menorDiametroSql()`:** expressão `CASE` compatível com SQLite e MySQL, que usa a menor medida disponível entre LR e LO mesmo quando uma das leituras está vazia.
+- **`consultaDiametros()`:** aplica limite de 745 mm; permite contagens independentes para o card de menor ou igual a 742 mm.
+- **`consultaPeriodicidades()`:** aplica percentual maior ou igual a 100% e ordena de modo decrescente.
+- **`limit(10)`:** restringe a consulta de cada tabela às primeiras 10 posições, sem limitar os totais calculados para os cards.
+- **`RankingPriorizacaoController::index()`:** valida tipos e códigos, e rejeita a associação de carro com trem incorreto.
+- **Partial Blade de filtros:** reaproveita o layout dos três formulários. O JavaScript apenas ajusta visualmente as opções de carro em cada formulário; todas as validações permanecem no servidor.
 
 ## 5. Procedimento no Laragon
 
-Após integrar o Módulo 04, atualize o repositório local e entre na nova branch:
+Na branch de trabalho já existente:
 
 ```bash
 git status
-git switch develop
-git pull origin develop
-git fetch origin
-git switch -c feature/modulo-5-ranking-priorizacao --track origin/feature/modulo-5-ranking-priorizacao
+git switch feature/modulo-5-ranking-priorizacao
+git pull origin feature/modulo-5-ranking-priorizacao
 php artisan test --filter=RankingPriorizacaoTest
 php artisan test
 ```
 
-Se a branch já existir, usar `git switch feature/modulo-5-ranking-priorizacao` e `git pull`.
+A rota continua `http://sgr-m.test/ranking`.
 
-**Não são necessárias migrations ou seeders novos.**
+**Não executar migrations ou seeders.** Não há alteração de estrutura de banco.
 
-## 6. Verificação no navegador
+## 6. Verificação funcional
 
-1. Entrar como administrador, gestor ou técnico e acessar `http://sgr-m.test/ranking`.
-2. Confirmar que pendências críticas aparecem acima das demais.
-3. Verificar que equipamentos com periodicidade igual ou maior que 100% aparecem no nível de periodicidade, se não possuem pendências mais prioritárias.
-4. Conferir rodeiros com menor diâmetro abaixo de 745 mm.
-5. Confirmar que um rodeiro com múltiplos motivos possui apenas uma linha, com os alertas adicionais.
-6. Filtrar por frota I, J ou L e por motor/rodeiro.
-7. Acessar a consulta hierárquica pelo atalho na linha.
-8. Conferir que administrador/técnico visualizam Substituir e gestor não.
-9. Verificar que equipamentos já retirados e pendências resolvidas não aparecem indevidamente.
+1. Entrar como administrador, gestor ou técnico e abrir o ranking.
+2. Selecionar a aba Rodeiros e confirmar três tabelas na ordem solicitada.
+3. Na primeira tabela, confirmar precedência crítica → alta → média → baixa.
+4. Filtrar pendências por trem, carro e prioridade.
+5. Conferir cards de diâmetros: abaixo de 745 mm e críticos com menor diâmetro até 742 mm.
+6. Filtrar diâmetros por trem/carro e verificar que os cards acompanham essa seleção.
+7. Confirmar a ordenação do menor diâmetro até o maior, mostrando no máximo 10 linhas.
+8. Confirmar a periodicidade da maior para a menor, com no máximo 10 linhas.
+9. Aplicar filtro em uma tabela e observar que as demais não mudam.
+10. Alternar para Motores e confirmar que apenas pendências de motores são apresentadas.
+11. Entrar como gestor: a consulta permanece liberada, mas a ação Substituir não aparece.
+12. Verificar registros históricos: equipamentos retirados ou pendências resolvidas não entram no ranking.
 
-## 7. Testes, evidências e limitações
+## 7. Testes e limitações
 
-Os testes Feature cobrem acesso dos três perfis, classificação de pendência crítica com condições simultâneas, limites de periodicidade e diâmetro, filtros e exclusão de instalações encerradas/pendências resolvidas.
+A suíte Feature cobre autorização, separação de abas, precedência de pendências, ordenação e limites dos diâmetros, cálculo dos cards, ordenação percentual, filtros independentes, consistência de trem/carro, limite de dez resultados por tabela e exclusão de instalações retiradas.
 
-**Estado atual:** o usuário confirmou os testes do Módulo 04, que foi integrado à `develop`. O ranking do Módulo 05 foi implementado no GitHub, mas ainda não foi executado no Laragon.
+**Evidência:** a versão anterior do Módulo 05 teve seus testes aprovados pelo usuário no Laragon. Os novos testes ainda precisam ser executados após a atualização desta interface.
 
-**Limitações:** a primeira versão calcula o ranking em memória após consultar as instalações e pendências. Isso é adequado ao conjunto acadêmico de aproximadamente 1.752 eixos, mas, para bases maiores, exigirá agregação e paginação otimizadas diretamente no banco. Não há exportação do ranking nem histórico de alterações de classificação. Não substitui a avaliação profissional de segurança.
+**Limitações:** a primeira versão oferece até dez registros por bloco, sem paginação adicional; os valores são critérios acadêmicos e não constituem autorização de manutenção real. O módulo não registra nem altera pendências ao apresentar alertas de diâmetro ou periodicidade.
 
-## 8. Conceitos acadêmicos e apresentação
+## 8. Conceitos acadêmicos e pontos para apresentação
 
-- **Regras de negócio e algoritmos de ordenação:** precedência determinística e desempate.
-- **Agregação de dados relacionais:** combinação entre pendências e condições.
-- **Eloquent ORM e carregamento antecipado:** navegação eficiente na estrutura de equipamentos.
-- **Reutilização e coesão:** lógica central em serviço independente da interface.
-- **Controle de acesso:** leitura para todos e movimentação restrita.
-- **Testes automatizados:** verifica limites exatos, exclusividade e precedência.
-- **Desenvolvimento incremental:** usa dados e estruturas dos módulos anteriores.
+- **Separação de responsabilidades:** controller valida filtros, service executa consultas e Blade organiza a interface.
+- **Coesão:** três consultas independentes representam três perspectivas de priorização.
+- **SQL e Eloquent Query Builder:** joins, filtros, `CASE`, `COUNT`, `ORDER BY` e `LIMIT`.
+- **Integridade lógica:** correlação entre instalação ativa, posição e ocorrência.
+- **Componentização Blade:** reaproveitamento de filtros sem repetição excessiva.
+- **Usabilidade:** abas por tipo, hierarquia visual e tags de severidade.
+- **Testes automatizados:** verificação de ordem, limites exatos e isolamento dos filtros.
 
-**Resumo para apresentar:** “O ranking consolida as pendências técnicas abertas com os indicadores de periodicidade e diâmetro de rodeiros instalados, ordenando equipamentos por criticidade e mantendo visíveis os alertas que justificam a classificação.”
+**Resumo para apresentação:** “A página de priorização foi organizada em abas de rodeiros e motores, com três rankings independentes para pendências, diâmetros e periodicidade. Os filtros e indicadores de cada bloco permitem identificar ocorrências críticas sem misturar tipos distintos de alerta.”
