@@ -73,7 +73,7 @@ class RankingPriorizacaoController extends Controller
             'tipo' => $tipo,
             'filtros' => $filtros,
             'frotas' => Frota::orderBy('codigo')->get(),
-            'trens' => Trem::with(['carros' => fn ($q) => $q->orderBy('posicao')])
+            'trens' => Trem::with(['frota', 'carros' => fn ($q) => $q->orderBy('posicao')])
                 ->orderBy('codigo')->get(),
             'pendencias' => $resultado['pendencias'],
             'totalPendencias' => $resultado['totalPendencias'],
