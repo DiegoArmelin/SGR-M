@@ -6,6 +6,7 @@ use App\Http\Controllers\ConsultaEquipamentosController;
 use App\Http\Controllers\ConsultaHierarquicaController;
 use App\Http\Controllers\FrotaController;
 use App\Http\Controllers\TremController;
+use App\Http\Controllers\MovimentacaoEquipamentoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -66,6 +67,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/equipamentos/hierarquica', [ConsultaHierarquicaController::class, 'index'])
         ->middleware('perfil:administrador,gestor,tecnico')
         ->name('equipamentos.hierarquica');
+
+    // Histórico de instalações: consulta permitida a todos os perfis.
+    Route::get('/eixos/{eixo}/historico', [MovimentacaoEquipamentoController::class, 'historico'])
+        ->middleware('perfil:administrador,gestor,tecnico')
+        ->name('equipamentos.historico');
+
+    // Movimentação: apenas administrador ou técnico pode efetuar substituições.
+    Route::middleware('perfil:administrador,tecnico')->group(function () {
+        Route::get('/eixos/{eixo}/substituir/{tipo}', [MovimentacaoEquipamentoController::class, 'create'])
+            ->name('equipamentos.movimentacao.create');
+        Route::post('/eixos/{eixo}/substituir/{tipo}', [MovimentacaoEquipamentoController::class, 'store'])
+            ->name('equipamentos.movimentacao.store');
+    });
 
     // Consulta de frotas e trens: todos os perfis autenticados.
     Route::middleware('perfil:administrador,gestor,tecnico')->group(function () {
