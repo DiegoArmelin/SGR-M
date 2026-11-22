@@ -6,6 +6,8 @@ use App\Models\Carro;
 use App\Models\Eixo;
 use App\Models\Frota;
 use App\Models\InstalacaoRodeiro;
+use App\Models\InstalacaoMotor;
+use App\Models\Motor;
 use App\Models\Rodeiro;
 use App\Models\Trem;
 use App\Models\User;
@@ -21,7 +23,7 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const CABECALHO = 'frota;trem;carro;posicao;serie_rodeiro;diametro_lr;diametro_lo;periodicidade;data_atualizacao';
+    private const CABECALHO = 'frota;trem;carro;posicao;serie_rodeiro;diametro_lr;diametro_lo;periodicidade;serie_motor;periodicidade_motor;data_atualizacao';
 
     private function csv(string $linhas): UploadedFile
     {
@@ -38,6 +40,8 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
         $carro = Carro::create(['trem_id' => $trem->id, 'codigo' => 'I011', 'posicao' => 1]);
         $primeiro = Rodeiro::create(['numero_serie' => 'RD-001', 'status' => 'instalado']);
         $segundo = Rodeiro::create(['numero_serie' => 'RD-002', 'status' => 'instalado']);
+        $motor1 = Motor::create(['numero_serie' => 'MT-001', 'status' => 'instalado']);
+        $motor2 = Motor::create(['numero_serie' => 'MT-002', 'status' => 'instalado']);
 
         foreach ([1 => $primeiro, 2 => $segundo] as $posicao => $rodeiro) {
             $eixo = Eixo::create(['carro_id' => $carro->id, 'numero' => $posicao]);
@@ -46,9 +50,14 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
                 'rodeiro_id' => $rodeiro->id,
                 'data_instalacao' => '2026-01-01',
             ]);
+            InstalacaoMotor::create([
+                'eixo_id' => $eixo->id,
+                'motor_id' => $posicao === 1 ? $motor1->id : $motor2->id,
+                'data_instalacao' => '2026-01-01',
+            ]);
         }
 
-        return compact('primeiro', 'segundo');
+        return compact('primeiro', 'segundo', 'motor1', 'motor2');
     }
 
     private function administrador(): User
@@ -67,7 +76,7 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
                 ->get(route('importacoes.periodicidade.create'))->assertForbidden();
             $this->actingAs($usuario)
                 ->post(route('importacoes.periodicidade.store'), [
-                    'arquivo' => $this->csv("I;I01;I011;1;RD-001;825.1;825.2;95;2026-11-21 12:00:00\n"),
+                    'arquivo' => $this->csv("I;I01;I011;1;RD-001;825.1;825.2;95;MT-001;107.00;2026-11-21 12:00:00\n"),
                 ])->assertForbidden();
         }
     }
@@ -77,8 +86,8 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
         $r = $this->preparar();
         $this->actingAs($this->administrador())->post(route('importacoes.periodicidade.store'), [
             'arquivo' => $this->csv(
-                "I;I01;I011;1;RD-001;825,40;825,85;95,50;2026-11-21 12:00:00\n"
-                . "I;I01;I011;2;RD-002;823.20;823.70;110.25;2026-11-21 12:00:00\n"
+                "I;I01;I011;1;RD-001;825,40;825,85;95,50;MT-001;107.00;2026-11-21 12:00:00\n"
+                . "I;I01;I011;2;RD-002;823.20;823.70;110.25;MT-002;107.00;2026-11-21 12:00:00\n"
             ),
         ])->assertRedirect(route('importacoes.periodicidade.create'))
           ->assertSessionHas('success');
@@ -103,8 +112,8 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
         ]);
         $this->actingAs($this->administrador())->post(route('importacoes.periodicidade.store'), [
             'arquivo' => $this->csv(
-                "I;I01;I011;1;RD-001;740;740;120;2026-11-21 12:00:00\n"
-                . "I;I01;I011;2;RD-002;828;829;90;2026-11-21 12:00:00\n"
+                "I;I01;I011;1;RD-001;740;740;120;MT-001;107.00;2026-11-21 12:00:00\n"
+                . "I;I01;I011;2;RD-002;828;829;90;MT-002;107.00;2026-11-21 12:00:00\n"
             ),
         ])->assertSessionHas('success');
 
@@ -123,7 +132,7 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
 
         $this->actingAs($this->administrador())->post(route('importacoes.periodicidade.store'), [
             'arquivo' => $this->csv(
-                "I;I01;I011;1;RD-001;801;802;110;2026-11-21 12:00:00\n"
+                "I;I01;I011;1;RD-001;801;802;110;MT-001;107.00;2026-11-21 12:00:00\n"
             ),
         ])->assertSessionHas('success');
 
@@ -136,7 +145,7 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
         // A série RD-002 ainda existe, mas pertence ao eixo 2, não ao 1.
         $this->actingAs($this->administrador())->post(route('importacoes.periodicidade.store'), [
             'arquivo' => $this->csv(
-                "I;I01;I011;1;RD-002;750;750;115;2026-11-21 12:00:00\n"
+                "I;I01;I011;1;RD-002;750;750;115;MT-002;107.00;2026-11-21 12:00:00\n"
             ),
         ])->assertSessionHas('success');
 
@@ -148,8 +157,8 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
         $r = $this->preparar();
         $this->actingAs($this->administrador())->post(route('importacoes.periodicidade.store'), [
             'arquivo' => $this->csv(
-                "I;I01;I011;1;RD-001;800;801;90;2026-11-21 12:00:00\n"
-                . "I;I01;I011;99;RD-002;800;801;90;2026-11-21 12:00:00\n"
+                "I;I01;I011;1;RD-001;800;801;90;MT-001;107.00;2026-11-21 12:00:00\n"
+                . "I;I01;I011;99;RD-002;800;801;90;MT-002;107.00;2026-11-21 12:00:00\n"
             ),
         ])->assertSessionHasErrors('arquivo');
 
@@ -161,8 +170,8 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
         $r = $this->preparar();
         $this->actingAs($this->administrador())->post(route('importacoes.periodicidade.store'), [
             'arquivo' => $this->csv(
-                "I;I01;I011;1;RD-001;800;801;90;2026-11-21 12:00:00\n"
-                . "I;I01;I011;2;RD-DESCONHECIDO;800;801;90;2026-11-21 12:00:00\n"
+                "I;I01;I011;1;RD-001;800;801;90;MT-001;107.00;2026-11-21 12:00:00\n"
+                . "I;I01;I011;2;RD-DESCONHECIDO;800;801;90;MT-002;107.00;2026-11-21 12:00:00\n"
             ),
         ])->assertSessionHasErrors('arquivo');
 
@@ -175,10 +184,10 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
         $admin = $this->administrador();
 
         foreach ([
-            "I;I01;I011;1;RD-001;abc;820;90;2026-11-21 12:00:00\n",
-            "I;I01;I011;1;RD-001;820;820;90;2026-02-30 12:00:00\n",
-            "I;I01;I011;1;RD-001;820;820;90;2026-11-21 12:00:00\n"
-                . "I;I01;I011;2;RD-001;820;820;90;2026-11-21 12:00:00\n",
+            "I;I01;I011;1;RD-001;abc;820;90;MT-001;107.00;2026-11-21 12:00:00\n",
+            "I;I01;I011;1;RD-001;820;820;90;MT-001;107.00;2026-02-30 12:00:00\n",
+            "I;I01;I011;1;RD-001;820;820;90;MT-001;107.00;2026-11-21 12:00:00\n"
+                . "I;I01;I011;2;RD-001;820;820;90;MT-001;107.00;2026-11-21 12:00:00\n",
         ] as $conteudo) {
             $this->actingAs($admin)->post(route('importacoes.periodicidade.store'), [
                 'arquivo' => $this->csv($conteudo),
@@ -201,8 +210,8 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
 
         $this->actingAs($this->administrador())->post(route('importacoes.periodicidade.store'), [
             'arquivo' => $this->csv(
-                "I;I01;I011;1;RD-001;825;826;95;2026-11-21 12:00:00\n"
-                . "I;I01;I011;2;RD-002;810;811;100;2026-11-21 12:00:00\n"
+                "I;I01;I011;1;RD-001;825;826;95;MT-001;107.00;2026-11-21 12:00:00\n"
+                . "I;I01;I011;2;RD-002;810;811;100;MT-002;107.00;2026-11-21 12:00:00\n"
             ),
         ])->assertRedirect(route('importacoes.periodicidade.create'));
 
@@ -213,7 +222,7 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
             ->assertSee('RD-002')
             ->assertSee('Atualizado')
             ->assertSee('Ignorado')
-            ->assertSee('Data do CSV igual ou anterior')
+            ->assertSee('Data igual ou anterior à última atualização')
             ->assertSee('Exportar relatório CSV');
 
         // A data antiga e a periodicidade original não são sobrescritas.
@@ -226,7 +235,7 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
         $this->preparar();
         $this->actingAs($this->administrador())->post(route('importacoes.periodicidade.store'), [
             'arquivo' => $this->csv(
-                "I;I01;I011;1;RD-002;800;801;90;2026-11-21 12:00:00\n"
+                "I;I01;I011;1;RD-002;800;801;90;MT-002;107.00;2026-11-21 12:00:00\n"
             ),
         ])->assertSessionHas('success');
 
@@ -247,8 +256,8 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
 
         $this->post(route('importacoes.periodicidade.store'), [
             'arquivo' => $this->csv(
-                "I;I01;I011;1;RD-001;825;826;95;2026-11-21 12:00:00\n"
-                . "I;I01;I011;1;RD-002;825;826;95;2026-11-21 12:00:00\n"
+                "I;I01;I011;1;RD-001;825;826;95;MT-001;107.00;2026-11-21 12:00:00\n"
+                . "I;I01;I011;1;RD-002;825;826;95;MT-002;107.00;2026-11-21 12:00:00\n"
             ),
         ])->assertSessionHas('success');
 
@@ -275,7 +284,7 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
         $admin = $this->administrador();
         $this->actingAs($admin)->post(route('importacoes.periodicidade.store'), [
             'arquivo' => $this->csv(
-                "I;I01;I011;1;RD-001;825;826;95;2026-11-21 12:00:00\n"
+                "I;I01;I011;1;RD-001;825;826;95;MT-001;107.00;2026-11-21 12:00:00\n"
             ),
         ])->assertSessionHas('success');
 
@@ -283,6 +292,77 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
         $tecnico = User::factory()->create(['perfil' => 'tecnico']);
         $this->actingAs($tecnico)
             ->get(route('importacoes.periodicidade.exportar'))->assertForbidden();
+    }
+
+
+    /** Uma linha processa simultaneamente roda e motor, mas as datas são independentes. */
+    public function test_motor_pode_atualizar_quando_rodeiro_tem_medicao_mais_recente(): void
+    {
+        $dados = $this->preparar();
+        $dados['primeiro']->update([
+            'periodicidade' => 90,
+            'data_atualizacao_condicao' => '2026-11-22 13:00:00',
+        ]);
+
+        $admin = $this->administrador();
+        $this->actingAs($admin)->post(route('importacoes.periodicidade.store'), [
+            'arquivo' => $this->csv(
+                "I;I01;I011;1;RD-001;800;801;120;MT-001;112;2026-11-21 12:00:00\n"
+            ),
+        ])->assertSessionHas('success');
+
+        $this->assertSame('90.00', $dados['primeiro']->fresh()->periodicidade);
+        $this->assertSame('112.00', $dados['motor1']->fresh()->periodicidade);
+        $this->get(route('importacoes.periodicidade.create'))
+            ->assertSee('Rodeiro')
+            ->assertSee('Motor')
+            ->assertSee('Data igual ou anterior');
+    }
+
+    /** Motor já removido é ignorado, enquanto o rodeiro pode ser atualizado. */
+    public function test_motor_com_serie_divergente_na_posicao_e_ignorado(): void
+    {
+        $dados = $this->preparar();
+        $this->actingAs($this->administrador())->post(route('importacoes.periodicidade.store'), [
+            'arquivo' => $this->csv(
+                "I;I01;I011;1;RD-001;800;801;101;MT-002;115;2026-11-21 12:00:00\n"
+            ),
+        ])->assertSessionHas('success');
+
+        $this->assertSame('101.00', $dados['primeiro']->fresh()->periodicidade);
+        $this->assertNull($dados['motor2']->fresh()->periodicidade);
+        $this->get(route('importacoes.periodicidade.create'))
+            ->assertSee('Série divergente');
+    }
+
+    /** Série inexistente de motor rejeita todo o arquivo, inclusive o rodeiro válido. */
+    public function test_motor_inexistente_rejeita_o_lote_inteiro(): void
+    {
+        $dados = $this->preparar();
+        $this->actingAs($this->administrador())->post(route('importacoes.periodicidade.store'), [
+            'arquivo' => $this->csv(
+                "I;I01;I011;1;RD-001;800;801;105;MT-INEXISTENTE;110;2026-11-21 12:00:00\n"
+            ),
+        ])->assertSessionHasErrors('arquivo');
+
+        $this->assertNull($dados['primeiro']->fresh()->periodicidade);
+        $this->assertNull($dados['motor1']->fresh()->periodicidade);
+    }
+
+    /** Motor e rodeiro só atualizam novamente com data posterior à registrada. */
+    public function test_reimportacao_com_mesma_data_nao_altera_motor(): void
+    {
+        $dados = $this->preparar();
+        $conteudo = "I;I01;I011;1;RD-001;800;801;104;MT-001;114;2026-11-21 12:00:00\n";
+        $admin = $this->administrador();
+        foreach ([1, 2] as $vez) {
+            $this->actingAs($admin)->post(route('importacoes.periodicidade.store'), [
+                'arquivo' => $this->csv($conteudo),
+            ])->assertSessionHas('success');
+        }
+        $this->assertSame('104.00', $dados['primeiro']->fresh()->periodicidade);
+        $this->assertSame('114.00', $dados['motor1']->fresh()->periodicidade);
+        $this->get(route('importacoes.periodicidade.create'))->assertSee('Data igual ou anterior');
     }
 
 }
