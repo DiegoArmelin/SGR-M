@@ -7,7 +7,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-/** Interface administrativa de importação de periodicidade percentual. */
+/** Interface administrativa de importação conjunta de condições dos rodeiros. */
 class ImportacaoPeriodicidadeController extends Controller
 {
     /** Apresenta as instruções e o formulário de upload. */
@@ -29,6 +29,10 @@ class ImportacaoPeriodicidadeController extends Controller
         $resultado = $importacao->importar($dados['arquivo']);
 
         return redirect()->route('importacoes.periodicidade.create')
-            ->with('success', "Importação concluída: {$resultado['atualizados']} rodeiro(s) atualizado(s).");
+            ->with('success', sprintf(
+                'Importação processada: %d linha(s), %d atualizado(s), %d ignorado(s) por data e %d ignorado(s) por posição/série divergente.',
+                $resultado['linhas'], $resultado['atualizados'],
+                $resultado['ignorados_data'], $resultado['ignorados_posicao']
+            ));
     }
 }
