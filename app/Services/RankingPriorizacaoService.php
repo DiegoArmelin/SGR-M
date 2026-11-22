@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use Illuminate\Database\Query\Builder;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -31,12 +30,23 @@ class RankingPriorizacaoService
         $resultado = [
             'pendencias' => $pendencias->limit(self::LIMITE)->get(),
             'totalPendencias' => (clone $pendencias)->reorder()->count(),
+            'pendenciasPorPrioridade' => [],
             'diametros' => collect(),
             'totalDiametros' => 0,
             'diametrosCriticos' => 0,
             'periodicidades' => collect(),
             'totalPeriodicidades' => 0,
+            'periodicidades105' => 0,
+            'periodicidades110' => 0,
         ];
+
+        // Cards da seção de pendências: a prioridade do filtro p_prioridade
+        // não limita as contagens, mas os filtros de localização sim.
+        foreach (['critica', 'alta', 'media', 'baixa'] as $prioridade) {
+            $base = $this->consultaPendencias($tipo, array_diff_key($filtros, ['p_prioridade' => true]));
+            $resultado['pendenciasPorPrioridade'][$prioridade] = $base
+                ->where('p.prioridade', $prioridade)->reorder()->count();
+        }
 
         if ($tipo === 'rodeiro') {
             $diametros = $this->consultaDiametros($filtros);
@@ -52,13 +62,19 @@ class RankingPriorizacaoService
                 ->orderBy('t.codigo')->orderBy('c.codigo')->orderBy('e.numero')
                 ->limit(self::LIMITE)->get();
 
-            $periodicidades = $this->consultaPeriodicidades($filtros);
-            $resultado['totalPeriodicidades'] = (clone $periodicidades)->count();
-            $resultado['periodicidades'] = $periodicidades
-                ->orderByDesc('r.periodicidade')
-                ->orderBy('t.codigo')->orderBy('c.codigo')->orderBy('e.numero')
-                ->limit(self::LIMITE)->get();
         }
+
+        // Motores passam a compartilhar a seção de periodicidade.
+        $periodicidades = $this->consultaPeriodicidades($tipo, $filtros);
+        $resultado['totalPeriodicidades'] = (clone $periodicidades)->count();
+        $resultado['periodicidades105'] = (clone $periodicidades)
+            ->where('r.periodicidade', '>=', 105)->count();
+        $resultado['periodicidades110'] = (clone $periodicidades)
+            ->where('r.periodicidade', '>=', 110)->count();
+        $resultado['periodicidades'] = $periodicidades
+            ->orderByDesc('r.periodicidade')
+            ->orderBy('t.codigo')->orderBy('c.codigo')->orderBy('e.numero')
+            ->limit(self::LIMITE)->get();
 
         return $resultado;
     }
@@ -89,6 +105,9 @@ class RankingPriorizacaoService
      */
     private function filtrarLocalizacao(Builder $consulta, array $filtros, string $prefixo): Builder
     {
+        if (!empty($filtros[$prefixo . '_frota'])) {
+            $consulta->where('f.codigo', $filtros[$prefixo . '_frota']);
+        }
         if (!empty($filtros[$prefixo . '_trem'])) {
             $consulta->where('t.codigo', $filtros[$prefixo . '_trem']);
         }
@@ -161,9 +180,9 @@ class RankingPriorizacaoService
             ->selectRaw($this->menorDiametroSql() . ' as menor_diametro');
     }
 
-    private function consultaPeriodicidades(array $filtros): Builder
+    private function consultaPeriodicidades(string $tipo, array $filtros): Builder
     {
-        $consulta = $this->instalacoes('rodeiro');
+        $consulta = $this->instalacoes($tipo);
         $this->filtrarLocalizacao($consulta, $filtros, 'r');
 
         return $consulta
