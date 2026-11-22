@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\Eixo;
+use App\Models\InstalacaoMotor;
 use App\Models\InstalacaoRodeiro;
+use App\Models\Motor;
 use App\Models\Rodeiro;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
@@ -11,152 +13,159 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Importa, em um único CSV, diâmetros LR/LO e periodicidade de rodeiros.
+ * Importa em um CSV os diâmetros e periodicidade dos rodeiros e a
+ * periodicidade dos motores instalados no mesmo eixo.
  *
- * A linha deve identificar a posição física e o número de série instalado.
- * Valores somente substituem os existentes quando data_atualizacao do CSV
- * for estritamente posterior à última data armazenada para aquele rodeiro.
+ * A data é comparada separadamente em cada equipamento. Uma medição antiga
+ * de rodeiro não impede atualizar o motor (e vice-versa).
+ * Erros de estrutura/serie inexistente revertam o lote inteiro.
  */
 class ImportacaoPeriodicidadeCsvService
 {
     private const MAX_LINHAS = 10000;
 
     private const COLUNAS = [
-        'frota', 'trem', 'carro', 'posicao', 'serie_rodeiro',
-        'diametro_lr', 'diametro_lo', 'periodicidade', 'data_atualizacao',
+        'frota', 'trem', 'carro', 'posicao',
+        'serie_rodeiro', 'diametro_lr', 'diametro_lo', 'periodicidade',
+        'serie_motor', 'periodicidade_motor', 'data_atualizacao',
     ];
 
-    /**
-     * @return array{linhas:int,atualizados:int,ignorados_data:int,ignorados_posicao:int,detalhes:array}
-     */
+    /** @return array<string,mixed> */
     public function importar(UploadedFile $arquivo): array
     {
-        $handle = fopen($arquivo->getRealPath(), 'rb');
-
-        if ($handle === false) {
-            $this->falhar('Não foi possível abrir o arquivo enviado.');
+        $arquivoAberto = fopen($arquivo->getRealPath(), 'rb');
+        if ($arquivoAberto === false) {
+            $this->falhar('Não foi possível abrir o CSV informado.');
         }
 
         try {
-            $primeiraLinha = fgets($handle);
-
-            if ($primeiraLinha === false) {
+            $cabecalho = fgets($arquivoAberto);
+            if ($cabecalho === false) {
                 $this->falhar('O arquivo CSV está vazio.');
             }
 
-            // Cabeçalho UTF-8 com BOM é aceito (inclusive Excel).
-            $primeiraLinha = preg_replace('/^\xEF\xBB\xBF/', '', $primeiraLinha);
-            $delimitador = str_contains($primeiraLinha, ';') ? ';' : ',';
-            $nomes = array_map(
-                fn ($nome) => strtolower(trim((string) $nome)),
-                str_getcsv($primeiraLinha, $delimitador)
+            $cabecalho = preg_replace('/^\xEF\xBB\xBF/', '', $cabecalho);
+            $separador = str_contains($cabecalho, ';') ? ';' : ',';
+            $colunas = array_map(
+                fn ($valor) => strtolower(trim((string) $valor)),
+                str_getcsv($cabecalho, $separador)
             );
 
-            if (count($nomes) !== count(self::COLUNAS)
-                || count(array_unique($nomes)) !== count(self::COLUNAS)
-                || array_diff(self::COLUNAS, $nomes)) {
-                $this->falhar('Cabeçalho inválido. Use as nove colunas indicadas no formulário.');
+            if (count($colunas) !== count(self::COLUNAS)
+                || count(array_unique($colunas)) !== count(self::COLUNAS)
+                || array_diff(self::COLUNAS, $colunas)) {
+                $this->falhar('Cabeçalho inválido: informe as onze colunas do modelo exibido na tela.');
             }
 
-            $indices = array_flip($nomes);
-            $dados = [];
-            $numeroLinha = 1;
-            $seriesUsadas = [];
+            $indices = array_flip($colunas);
+            $linhas = [];
+            $series = ['rodeiro' => [], 'motor' => []];
+            $linhaNumero = 1;
 
-            // Valida todo o conteúdo antes de qualquer atualização no banco.
-            while (($campos = fgetcsv($handle, 0, $delimitador, '"', '\\')) !== false) {
-                $numeroLinha++;
+            // Valida todo o arquivo antes de alterar os dados.
+            while (($valores = fgetcsv($arquivoAberto, 0, $separador, '"', '\\')) !== false) {
+                $linhaNumero++;
 
-                if (count($campos) === 1 && trim((string) $campos[0]) === '') {
+                if (count($valores) === 1 && trim((string) $valores[0]) === '') {
                     continue;
                 }
-
-                if (count($dados) >= self::MAX_LINHAS) {
-                    $this->falhar('O CSV ultrapassa 10.000 registros.');
+                if (count($linhas) >= self::MAX_LINHAS) {
+                    $this->falhar('O arquivo ultrapassa 10.000 linhas de dados.');
                 }
-
-                if (count($campos) !== count($nomes)) {
-                    $this->falhar("Linha {$numeroLinha}: quantidade de colunas incorreta.");
+                if (count($valores) !== count($colunas)) {
+                    $this->falhar("Linha {$linhaNumero}: quantidade incorreta de colunas.");
                 }
 
                 $linha = [];
                 foreach (self::COLUNAS as $nome) {
-                    $linha[$nome] = trim((string) $campos[$indices[$nome]]);
+                    $linha[$nome] = trim((string) $valores[$indices[$nome]]);
                 }
 
                 if ($linha['frota'] === '' || $linha['trem'] === ''
-                    || $linha['carro'] === '' || $linha['serie_rodeiro'] === ''
-                    || strlen($linha['serie_rodeiro']) > 50
+                    || $linha['carro'] === ''
                     || !preg_match('/^[1-9]\d*$/D', $linha['posicao'])) {
-                    $this->falhar("Linha {$numeroLinha}: frota, trem, carro, posição ou série inválidos.");
+                    $this->falhar("Linha {$linhaNumero}: localização inválida.");
                 }
 
-                // A mesma série no arquivo não pode receber duas condições.
-                if (isset($seriesUsadas[$linha['serie_rodeiro']])) {
-                    $this->falhar("Linha {$numeroLinha}: série duplicada {$linha['serie_rodeiro']}.");
+                foreach (['rodeiro' => 'serie_rodeiro', 'motor' => 'serie_motor'] as $tipo => $campo) {
+                    $serie = $linha[$campo];
+                    if ($serie === '' || strlen($serie) > 50) {
+                        $this->falhar("Linha {$linhaNumero}: {$campo} inválido.");
+                    }
+                    if (isset($series[$tipo][$serie])) {
+                        $this->falhar("Linha {$linhaNumero}: série de {$tipo} repetida: {$serie}.");
+                    }
+                    $series[$tipo][$serie] = true;
                 }
-                $seriesUsadas[$linha['serie_rodeiro']] = true;
 
-                foreach (['diametro_lr', 'diametro_lo', 'periodicidade'] as $campo) {
-                    $linha[$campo] = $this->numero($linha[$campo], $campo, $numeroLinha);
+                foreach (['diametro_lr','diametro_lo','periodicidade','periodicidade_motor'] as $campo) {
+                    $linha[$campo] = $this->numero($linha[$campo], $campo, $linhaNumero);
                 }
 
-                // Data e hora de medição do CSV; não utilizar now() como data
-                // da condição, pois distorceria a ordem temporal das coletas.
                 $data = $linha['data_atualizacao'];
-
                 if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/D', $data)) {
-                    $this->falhar("Linha {$numeroLinha}: data inválida; use AAAA-MM-DD HH:MM:SS.");
+                    $this->falhar("Linha {$linhaNumero}: data inválida; formato AAAA-MM-DD HH:MM:SS.");
                 }
-
                 try {
                     $instante = Carbon::createFromFormat('!Y-m-d H:i:s', $data);
                 } catch (\Exception $e) {
-                    $this->falhar("Linha {$numeroLinha}: data de atualização inexistente.");
+                    $this->falhar("Linha {$linhaNumero}: data inexistente.");
                 }
-
                 if (!$instante || $instante->format('Y-m-d H:i:s') !== $data) {
-                    $this->falhar("Linha {$numeroLinha}: data de atualização inexistente.");
+                    $this->falhar("Linha {$linhaNumero}: data inexistente.");
                 }
-
                 $linha['data_atualizacao'] = $instante;
-                // Preserva o número real do CSV, inclusive se houver linhas em branco.
-                $linha['linha_csv'] = $numeroLinha;
-                $dados[] = $linha;
+                $linha['linha_csv'] = $linhaNumero;
+                $linhas[] = $linha;
             }
 
-            if (!$dados) {
-                $this->falhar('O arquivo não contém registros.');
+            if (!$linhas) {
+                $this->falhar('O CSV não contém registros.');
             }
 
-            // Séries inexistentes indicam arquivo incompatível: recusa total.
-            $series = array_keys($seriesUsadas);
-            $encontradas = Rodeiro::whereIn('numero_serie', $series)
-                ->pluck('numero_serie')->all();
-            $naoEncontradas = array_values(array_diff($series, $encontradas));
-
-            if ($naoEncontradas) {
-                $this->falhar(
-                    'Série não cadastrada: ' . implode(', ', array_slice($naoEncontradas, 0, 5))
-                    . (count($naoEncontradas) > 5 ? ' (e outras)' : '')
-                );
+            // Falha de cadastro em qualquer tipo impede atualizações parciais.
+            foreach (['rodeiro' => Rodeiro::class, 'motor' => Motor::class] as $tipo => $modelo) {
+                $informadas = array_keys($series[$tipo]);
+                $existentes = $modelo::whereIn('numero_serie', $informadas)
+                    ->pluck('numero_serie')->all();
+                $ausentes = array_values(array_diff($informadas, $existentes));
+                if ($ausentes) {
+                    $this->falhar(
+                        'Série de ' . $tipo . ' não cadastrada: '
+                        . implode(', ', array_slice($ausentes, 0, 5))
+                    );
+                }
             }
 
-            // A transação protege a atualização em lote. Eixos são bloqueados
-            // com a mesma estratégia da movimentação para evitar troca
-            // concorrente enquanto a condição do rodeiro está sendo atualizada.
-            return DB::transaction(function () use ($dados): array {
+            return DB::transaction(function () use ($linhas): array {
                 $resultado = [
-                    'linhas' => count($dados),
+                    'linhas' => count($linhas),
                     'atualizados' => 0,
                     'ignorados_data' => 0,
                     'ignorados_posicao' => 0,
                     'detalhes' => [],
+                    'rodeiros_atualizados' => 0,
+                    'motores_atualizados' => 0,
                 ];
 
-                foreach ($dados as $linha) {
-                    // O relatório registra cada linha do CSV com sua posição e
-                    // resultado final; é gerado somente quando o lote conclui.
+                foreach ($linhas as $linha) {
+                    $eixo = Eixo::query()
+                        ->where('numero', (int) $linha['posicao'])
+                        ->whereHas('carro', fn ($q) => $q
+                            ->where('codigo', $linha['carro'])
+                            ->whereHas('trem', fn ($t) => $t
+                                ->where('codigo', $linha['trem'])
+                                ->whereHas('frota', fn ($f) => $f
+                                    ->where('codigo', $linha['frota']))))
+                        ->lockForUpdate()->first();
+
+                    if (!$eixo) {
+                        $this->falhar(
+                            "Posição inexistente: {$linha['frota']}/{$linha['trem']}/"
+                            . "{$linha['carro']}-{$linha['posicao']}."
+                        );
+                    }
+
                     $detalhe = [
                         'linha' => $linha['linha_csv'],
                         'frota' => $linha['frota'],
@@ -167,96 +176,115 @@ class ImportacaoPeriodicidadeCsvService
                         'diametro_lr' => $linha['diametro_lr'],
                         'diametro_lo' => $linha['diametro_lo'],
                         'periodicidade' => $linha['periodicidade'],
+                        'serie_motor' => $linha['serie_motor'],
+                        'periodicidade_motor' => $linha['periodicidade_motor'],
                         'data_atualizacao' => $linha['data_atualizacao']->format('Y-m-d H:i:s'),
-                        'status' => 'atualizado',
-                        'motivo' => 'Condição atualizada com sucesso.',
                     ];
 
-                    $eixo = Eixo::query()
-                        ->where('numero', (int) $linha['posicao'])
-                        ->whereHas('carro', fn ($q) => $q
-                            ->where('codigo', $linha['carro'])
-                            ->whereHas('trem', fn ($t) => $t
-                                ->where('codigo', $linha['trem'])
-                                ->whereHas('frota', fn ($f) => $f
-                                    ->where('codigo', $linha['frota']))))
-                        ->lockForUpdate()
-                        ->first();
+                    // A ordem de bloqueio é estável: eixo → rodeiro → motor.
+                    // Usa instalação ativa para proteger a posição de trocas.
+                    $this->processarEquipamento(
+                        $eixo->id, 'rodeiro', $linha, $detalhe, $resultado
+                    );
+                    $this->processarEquipamento(
+                        $eixo->id, 'motor', $linha, $detalhe, $resultado
+                    );
 
-                    // Uma localização que não existe indica erro estrutural
-                    // no CSV e deve interromper todo o lote.
-                    if (!$eixo) {
-                        $this->falhar(
-                            "Posição inexistente no cadastro: "
-                            . "{$linha['frota']}/{$linha['trem']}/{$linha['carro']}-{$linha['posicao']}."
+                    // Contador legado por linha: atualizada se ao menos um
+                    // equipamento foi atualizado; caso contrário, ignorada.
+                    $houveAtualizacao = $detalhe['status_rodeiro'] === 'atualizado'
+                        || $detalhe['status_motor'] === 'atualizado';
+                    $resultado[$houveAtualizacao ? 'atualizados' : 'ignorados_data'] +=
+                        $houveAtualizacao ? 1 : (
+                            $detalhe['status_rodeiro'] === 'ignorado_data'
+                            && $detalhe['status_motor'] === 'ignorado_data' ? 1 : 0
                         );
-                    }
-
-                    $instalacao = InstalacaoRodeiro::query()
-                        ->where('eixo_id', $eixo->id)
-                        ->whereNull('data_retirada')
-                        ->lockForUpdate()
-                        ->first();
-
-                    $rodeiro = Rodeiro::query()
-                        ->where('numero_serie', $linha['serie_rodeiro'])
-                        ->lockForUpdate()->firstOrFail();
-
-                    // Peça que já foi retirada da posição (por troca manual)
-                    // não recebe dados dessa posição; mantém-se o histórico.
-                    if (!$instalacao || $instalacao->rodeiro_id !== $rodeiro->id) {
+                    if (!$houveAtualizacao && (
+                        $detalhe['status_rodeiro'] === 'ignorado_posicao'
+                        || $detalhe['status_motor'] === 'ignorado_posicao'
+                    )) {
                         $resultado['ignorados_posicao']++;
-                        $detalhe['status'] = 'ignorado';
-                        $detalhe['motivo'] = !$instalacao
-                            ? 'Nenhum rodeiro instalado atualmente nesta posição.'
-                            : 'Série divergente: o rodeiro atualmente instalado é '
-                                . (Rodeiro::query()->whereKey($instalacao->rodeiro_id)->value('numero_serie') ?? 'não identificado')
-                                . '.';
-                        $resultado['detalhes'][] = $detalhe;
-                        continue;
                     }
 
-                    if ($rodeiro->data_atualizacao_condicao
-                        && !$linha['data_atualizacao']->greaterThan($rodeiro->data_atualizacao_condicao)) {
-                        $resultado['ignorados_data']++;
-                        $detalhe['status'] = 'ignorado';
-                        $detalhe['motivo'] = 'Data do CSV igual ou anterior à última atualização ('
-                            . $rodeiro->data_atualizacao_condicao->format('d/m/Y H:i:s') . ').';
-                        $resultado['detalhes'][] = $detalhe;
-                        continue;
-                    }
-
-                    $rodeiro->update([
-                        'diametro_lr' => $linha['diametro_lr'],
-                        'diametro_lo' => $linha['diametro_lo'],
-                        'periodicidade' => $linha['periodicidade'],
-                        'data_atualizacao_condicao' => $linha['data_atualizacao'],
-                    ]);
-                    $resultado['atualizados']++;
+                    $detalhe['status'] = $houveAtualizacao ? 'atualizado' : 'ignorado';
+                    $detalhe['motivo'] = 'Rodeiro: ' . $detalhe['motivo_rodeiro']
+                        . ' Motor: ' . $detalhe['motivo_motor'];
                     $resultado['detalhes'][] = $detalhe;
                 }
 
                 return $resultado;
             }, 3);
         } finally {
-            fclose($handle);
+            fclose($arquivoAberto);
         }
     }
 
-    /** Valida formato numérico, sem impor limites físicos de diâmetro. */
+    /**
+     * Aplica a condição somente se a série ainda estiver instalada naquele
+     * eixo e a data informada for posterior à última medição do equipamento.
+     *
+     * @param array<string,mixed> $linha
+     * @param array<string,mixed> $detalhe
+     * @param array<string,mixed> $resultado
+     */
+    private function processarEquipamento(
+        int $eixoId, string $tipo, array $linha, array &$detalhe, array &$resultado
+    ): void {
+        $rodeiro = $tipo === 'rodeiro';
+        $modelo = $rodeiro ? Rodeiro::class : Motor::class;
+        $instalacaoModelo = $rodeiro ? InstalacaoRodeiro::class : InstalacaoMotor::class;
+        $colunaId = $rodeiro ? 'rodeiro_id' : 'motor_id';
+        $colunaSerie = $rodeiro ? 'serie_rodeiro' : 'serie_motor';
+
+        $instalacao = $instalacaoModelo::where('eixo_id', $eixoId)
+            ->whereNull('data_retirada')->lockForUpdate()->first();
+        $equipamento = $modelo::where('numero_serie', $linha[$colunaSerie])
+            ->lockForUpdate()->firstOrFail();
+
+        if (!$instalacao || $instalacao->{$colunaId} !== $equipamento->id) {
+            $detalhe['status_' . $tipo] = 'ignorado_posicao';
+            $atual = $instalacao ? $modelo::whereKey($instalacao->{$colunaId})
+                ->value('numero_serie') : null;
+            $detalhe['motivo_' . $tipo] = $atual
+                ? "Série divergente; instalado: {$atual}."
+                : 'Nenhum equipamento ativo nesta posição.';
+            return;
+        }
+
+        if ($equipamento->data_atualizacao_condicao
+            && !$linha['data_atualizacao']->greaterThan($equipamento->data_atualizacao_condicao)) {
+            $detalhe['status_' . $tipo] = 'ignorado_data';
+            $detalhe['motivo_' . $tipo] = 'Data igual ou anterior à última atualização ('
+                . $equipamento->data_atualizacao_condicao->format('d/m/Y H:i:s') . ').';
+            return;
+        }
+
+        $atributos = [
+            'periodicidade' => $linha[$rodeiro ? 'periodicidade' : 'periodicidade_motor'],
+            'data_atualizacao_condicao' => $linha['data_atualizacao'],
+        ];
+        if ($rodeiro) {
+            $atributos['diametro_lr'] = $linha['diametro_lr'];
+            $atributos['diametro_lo'] = $linha['diametro_lo'];
+        }
+
+        $equipamento->update($atributos);
+        $detalhe['status_' . $tipo] = 'atualizado';
+        $detalhe['motivo_' . $tipo] = 'Condição atualizada.';
+        $resultado[$rodeiro ? 'rodeiros_atualizados' : 'motores_atualizados']++;
+    }
+
+    /** Validação de formato, sem impor limites específicos do CSV de teste. */
     private function numero(string $valor, string $campo, int $linha): string
     {
         $normalizado = str_replace(',', '.', trim($valor));
-
         if (!preg_match('/^\d+(?:\.\d{1,2})?$/D', $normalizado)
-            || !is_numeric($normalizado) || (float) $normalizado > 99999.99) {
+            || (float) $normalizado > 99999.99) {
             $this->falhar("Linha {$linha}: {$campo} inválido.");
         }
-
         return number_format((float) $normalizado, 2, '.', '');
     }
 
-    /** Erros de validação são exibidos sem revelar mensagens internas de SQL. */
     private function falhar(string $mensagem): never
     {
         throw ValidationException::withMessages(['arquivo' => $mensagem]);
