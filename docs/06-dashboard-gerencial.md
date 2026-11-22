@@ -208,3 +208,32 @@ php artisan db:seed --class=PendenciasDemonstracaoSeeder
 Não é necessário `migrate:fresh` nem recriar os equipamentos. Abra `/indicadores` para conferir os três cards superiores e `/indicadores/historico` para verificar as roscas por tipo e a ausência da frota de teste na comparação de frotas.
 
 **Evidência pendente:** os testes e as telas desta evolução precisam ser aprovados no Laragon. A versão anterior do módulo havia sido validada.
+
+## 10. Evolução — menu superior e agrupamento administrativo
+
+O layout geral do sistema (`resources/views/layouts/app.blade.php`) passou a utilizar navegação responsiva com identidade visual aprimorada, indicadores de página ativa e menus suspensos. A estrutura da navegação é:
+
+- **Início, Pendências, Ranking e Indicadores:** links principais de acesso rápido.
+- **Consultas:** consulta hierárquica (frota/trem/carro/eixo) e consulta de equipamentos por série.
+- **Administração (somente administrador):** Frotas, Trens, Equipamentos cadastrados (consulta) e Importar condições (CSV), contemplando diâmetros e periodicidade de rodeiros e motores.
+
+O agrupamento não altera as permissões de acesso já protegidas por middleware. A consulta de equipamentos permanece disponível para todos os perfis; não foi criado cadastro manual de rodeiro ou motor, pois o módulo atual oferece consulta e importação de condições, sem formulário de inclusão individual desses equipamentos.
+
+### Recursos de interface
+
+- Menus suspensos nativos em `details/summary`, operáveis por teclado.
+- Navegação adaptável em telas menores, com botão de expansão e atributos `aria-expanded`.
+- Identificação da página ativa e foco visível para acessibilidade.
+- Cabeçalho com perfil de usuário e encerramento de sessão por POST com CSRF.
+- JavaScript limitado a expandir/recolher o menu e fechar submenus.
+
+### Verificação
+
+```bash
+php artisan test --filter=MenuSuperiorTest
+php artisan test
+```
+
+Verificar visualmente os menus como administrador, gestor e técnico, no desktop e em largura reduzida. O menu Administração deve aparecer somente para administrador, e o dropdown não deve substituir o controle de acesso aplicado às rotas.
+
+**Situação:** implementação e testes enviados ao GitHub; validação no Laragon pendente.
