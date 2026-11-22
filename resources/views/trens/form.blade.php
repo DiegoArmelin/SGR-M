@@ -1,9 +1,11 @@
 @extends('layouts.app')
 @section('title', ($trem->exists ? 'Editar trem' : 'Novo trem') . ' — SGR-M')
 @section('content')
+{{-- Formulário reaproveitado em cadastro e edição, com vínculo obrigatório à frota. --}}
 <main class="container"><div class="card">
     <h1 class="page-title">{{ $trem->exists ? 'Editar trem' : 'Cadastrar trem' }}</h1>
     <form method="POST" action="{{ $trem->exists ? route('trens.update', $trem) : route('trens.store') }}">
+        {{-- Proteção CSRF e método PUT quando o trem já existe. --}}
         @csrf @if($trem->exists) @method('PUT') @endif
         <div class="form-group">
             <label class="form-label" for="frota_id">Frota *</label>
@@ -28,6 +30,7 @@
             @error('descricao')<p class="field-error">{{ $message }}</p>@enderror
         </div>
         <div class="form-group">
+            {{-- Garante envio de 0 quando a opção de atividade não está marcada. --}}
             <input type="hidden" name="ativo" value="0">
             <label><input type="checkbox" name="ativo" value="1" @checked(old('ativo', $trem->exists ? $trem->ativo : true))> Trem ativo</label>
             @error('ativo')<p class="field-error">{{ $message }}</p>@enderror
