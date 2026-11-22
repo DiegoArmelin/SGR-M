@@ -222,7 +222,7 @@ class ImportacaoPeriodicidadeCsvTest extends TestCase
             ->assertSee('RD-002')
             ->assertSee('Atualizado')
             ->assertSee('Ignorado')
-            ->assertSee('Data do CSV igual ou anterior')
+            ->assertSee('Data igual ou anterior à última atualização')
             ->assertSee('Exportar relatório CSV');
 
         // A data antiga e a periodicidade original não são sobrescritas.
