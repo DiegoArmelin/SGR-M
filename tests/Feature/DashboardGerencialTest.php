@@ -76,13 +76,10 @@ class DashboardGerencialTest extends TestCase
         }
     }
 
-    /** A página inicial passa a utilizar o dashboard gerencial, inclusive após login. */
-    public function test_pagina_inicial_exibe_indicadores_e_mantem_filtro_de_frota(): void
+    /** A página inicial é uma central de acesso; indicadores ficam em outra rota. */
+    public function test_pagina_inicial_e_painel_de_funcionalidades(): void
     {
         $this->get('/')->assertRedirect(route('login'));
-
-        $this->instalar('I', 'I01');
-        $this->instalar('J', 'J26');
 
         $this->actingAs($this->gestor())
             ->get('/')
@@ -90,20 +87,20 @@ class DashboardGerencialTest extends TestCase
 
         $this->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('Dashboard Gerencial do SGR-M')
-            ->assertSee('Total de equipamentos instalados')
-            ->assertDontSee('Painel Principal')
-            ->assertViewHas('dados', fn ($d) =>
-                $d['instalados']['rodeiro'] === 2 &&
-                $d['instalados']['motor'] === 2
-            );
+            ->assertSee('Bem-vindo ao SGR-M')
+            ->assertSee('Consulta hierárquica')
+            ->assertSee('Gestão de pendências')
+            ->assertSee('Ranking de priorização')
+            ->assertSee('Indicadores gerenciais')
+            ->assertSee('Histórico de substituições')
+            ->assertSee('Registrar pendência')
+            ->assertDontSee('Cadastro de frotas')
+            ->assertDontSee('Total de equipamentos instalados');
 
-        $this->get(route('dashboard', ['frota' => 'I']))
+        // Dashboard de indicadores continua independente e funcional.
+        $this->get(route('dashboard.gerencial'))
             ->assertOk()
-            ->assertViewHas('dados', fn ($d) =>
-                $d['instalados']['rodeiro'] === 1 &&
-                $d['instalados']['motor'] === 1
-            );
+            ->assertSee('Total de equipamentos instalados');
     }
 
     /** Condições são contadas só para instalações ativas. */
