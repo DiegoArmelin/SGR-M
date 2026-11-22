@@ -24,11 +24,12 @@
                 <input class="form-control" type="date" id="data_movimentacao" name="data_movimentacao" value="{{ old('data_movimentacao', date('Y-m-d')) }}" max="{{ date('Y-m-d') }}" required>
             </div>
             <div class="form-group">
-                <label class="form-label" for="motivo_retirada">Motivo da retirada *</label>
-                <select class="form-control" id="motivo_retirada" name="motivo_retirada" required>
+                <label class="form-label" for="motivo_retirada_id">Motivo da retirada *</label>
+                <select class="form-control" id="motivo_retirada_id" name="motivo_retirada_id" required>
                     <option value="">Selecione</option>
-                    @foreach(['Troca programada', 'Diâmetro condenado', 'Calo acentuado', 'Defeito identificado', 'Outro'] as $motivo)
-                        <option value="{{ $motivo }}" @selected(old('motivo_retirada') === $motivo)>{{ $motivo }}</option>
+                    {{-- Os motivos são consultados na tabela e filtrados por tipo no controller. --}}
+                    @foreach($motivos as $motivo)
+                        <option value="{{ $motivo->id }}" @selected(old('motivo_retirada_id') == $motivo->id)>{{ $motivo->descricao }}</option>
                     @endforeach
                 </select>
             </div>
