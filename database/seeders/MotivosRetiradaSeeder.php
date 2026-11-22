@@ -27,12 +27,13 @@ class MotivosRetiradaSeeder extends Seeder
             ['ROD008', 'ruído no mancal', 'rodeiro'],
             ['ROD009', 'ruído no redutor', 'rodeiro'],
 
-            // Motivos exclusivos dos motores (5 registros).
+            // Motivos exclusivos dos motores (6 registros, incluindo periodicidade).
             ['MOT001', 'Motor desbalanceado', 'motor'],
             ['MOT002', 'Defeito no rolamento', 'motor'],
             ['MOT003', 'falha de isolamento', 'motor'],
             ['MOT004', 'sobreaquecimento', 'motor'],
             ['MOT005', 'ruído anormal', 'motor'],
+            ['MOT006', 'periodicidade vencida', 'motor'],
         ];
 
         foreach ($motivos as [$codigo, $descricao, $tipo]) {
@@ -43,6 +44,6 @@ class MotivosRetiradaSeeder extends Seeder
             );
         }
 
-        $this->command?->info('Catálogo de motivos: 9 rodeiros + 5 motores.');
+        $this->command?->info('Catálogo de motivos: 9 rodeiros + 6 motores.');
     }
 }
