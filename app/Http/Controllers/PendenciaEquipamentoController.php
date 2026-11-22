@@ -34,7 +34,11 @@ class PendenciaEquipamentoController extends Controller
         ]);
 
         $pendencias = PendenciaEquipamento::query()
-            ->with(['rodeiro', 'motor', 'motivoRetirada', 'autor', 'eixo.carro.trem.frota'])
+            ->with(['rodeiro', 'motor', 'motivoRetirada', 'autor', 'eixo.carro.trem.frota',
+                // Carrega o vínculo atual apenas para habilitar a ação de troca
+                // quando a pendência ainda se refere ao item instalado.
+                'eixo.instalacoesRodeiros' => fn ($q) => $q->whereNull('data_retirada'),
+                'eixo.instalacoesMotores' => fn ($q) => $q->whereNull('data_retirada')])
             ->when($filtros['situacao'] ?? null, fn ($q, $v) => $q->where('situacao', $v))
             ->when(($filtros['tipo'] ?? '') === 'rodeiro', fn ($q) => $q->whereNotNull('rodeiro_id'))
             ->when(($filtros['tipo'] ?? '') === 'motor', fn ($q) => $q->whereNotNull('motor_id'))
