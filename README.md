@@ -304,6 +304,8 @@ Os relatórios detalhados ficam na pasta [`docs/`](docs/):
 - [Entrega 04 — Importação de Condições CSV](docs/04-importacao-periodicidade-csv.md).
 - [Entrega 05 — Ranking de Priorização](docs/05-ranking-priorizacao.md).
 - [Módulo 06 — Dashboard Gerencial e Histórico](docs/06-dashboard-gerencial.md).
+- [Módulo 07 — Plano de Homologação Integrada](docs/07-validacao-integrada-entrega-final.md).
+- [Apresentação Final — Roteiro de Slides e Evidências](docs/08-roteiro-apresentacao-final.md).
 
 Os documentos descrevem as decisões técnicas, os componentes implementados, os testes e as limitações de cada etapa. Consulte também o [Plano de validação integrada e roteiro da entrega final](docs/07-validacao-integrada-entrega-final.md).
 
