@@ -209,29 +209,4 @@ class PendenciaEquipamentoController extends Controller
             ->with('success', 'Pendência registrada com sucesso.');
     }
 
-    /** Encerra pendência aberta e registra quando e por que foi resolvida. */
-    public function resolver(Request $request, PendenciaEquipamento $pendencia): RedirectResponse
-    {
-        $dados = $request->validate([
-            'observacoes_resolucao' => ['required', 'string', 'max:1000'],
-        ]);
-
-        DB::transaction(function () use ($pendencia, $dados): void {
-            $atual = PendenciaEquipamento::whereKey($pendencia->id)->lockForUpdate()->firstOrFail();
-            if ($atual->situacao !== 'aberta') {
-                throw ValidationException::withMessages([
-                    'situacao' => 'Esta pendência já foi resolvida.',
-                ]);
-            }
-
-            $atual->update([
-                'situacao' => 'resolvida',
-                'resolvida_em' => now(),
-                'observacoes_resolucao' => $dados['observacoes_resolucao'],
-            ]);
-        });
-
-        return redirect()->route('pendencias.index')
-            ->with('success', 'Pendência resolvida com sucesso.');
-    }
 }
