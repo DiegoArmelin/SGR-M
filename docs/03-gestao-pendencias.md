@@ -4,7 +4,7 @@
 **Disciplina:** Laboratório de Engenharia de Software  
 **Entrega:** Módulo incremental de gestão de pendências  
 **Branch:** `feature/entrega-03-consulta-equipamentos`  
-**Situação:** correção no Model aplicada após falha nos testes de integração; nova execução no Laragon ainda pendente.
+**Situação:** motivo catalogado e observações complementares implementados; validação desta atualização pendente no Laragon.
 
 ## 1. Objetivo
 
@@ -20,6 +20,9 @@ Cadastrar e acompanhar pendências técnicas a partir da localização **Frota �
 | Posição de origem | Armazenada em `eixo_id` para preservar a localização do registro após a movimentação |
 | Sem instalação | Rejeita cadastro se não houver equipamento do tipo escolhido no eixo |
 | Integridade da seleção | Confere novamente no POST se trem pertence à frota, carro ao trem e eixo ao carro |
+| Motivo | Obrigatório, selecionado na tabela `motivos_retirada`, filtrado por tipo de equipamento e ativo |
+| Observações | Campo complementar opcional, até 2.000 caracteres |
+| Descrição anterior | Mantida para compatibilidade com registros antigos; novos registros copiam a descrição do motivo |
 | Prioridade | `critica`, `alta`, `media`, `baixa` |
 | Situação | `aberta` ou `resolvida` |
 | Registro | Todos os perfis autenticados podem registrar e consultar |
@@ -39,6 +42,7 @@ A tabela não força uma única pendência aberta por equipamento: um mesmo rode
 |---|---|
 | `database/migrations/2026_11_22_120000_create_pendencias_equipamentos_table.php` | Cria pendências e vínculos com equipamento e usuário |
 | `database/migrations/2026_11_22_130000_add_eixo_id_to_pendencias_equipamentos_table.php` | Adiciona vínculo opcional com eixo, sem alterar registros preexistentes |
+| `database/migrations/2026_11_22_140000_add_motivo_and_observacoes_to_pendencias_equipamentos.php` | Acrescenta FK opcional do motivo e observações preservando pendências existentes |
 | `app/Models/PendenciaEquipamento.php` | Model Eloquent e relações com rodeiro, motor e autor |
 | `app/Http/Controllers/PendenciaEquipamentoController.php` | Listagem, cadastro, validação e resolução |
 | `resources/views/pendencias/index.blade.php` | Listagem, filtros e formulário de resolução |
@@ -51,8 +55,8 @@ A tabela não força uma única pendência aberta por equipamento: um mesmo rode
 ## 4. Métodos e principais recursos de programação
 
 - **`index(Request)`:** valida filtros de situação e tipo; consulta as pendências com `with()` para evitar N+1; aplica ordem por situação e prioridade; pagina em 20 registros.
-- **`create(Request)`:** valida os filtros da hierarquia, restringe cada conjunto de opções ao nível pai e mostra a série da instalação ativa do tipo selecionado.
-- **`store(Request)`:** valida os IDs de frota/trem/carro/eixo e o tipo; verifica os vínculos entre os quatro níveis; bloqueia o eixo, consulta a instalação ativa do equipamento correspondente e salva o `eixo_id`, `rodeiro_id` ou `motor_id`, além do autor e da prioridade. O número de série não é digitado nem confiado ao formulário.
+- **`create(Request)`:** valida filtros da hierarquia, identifica a série instalada e carrega apenas motivos ativos do catálogo para o tipo de equipamento selecionado.
+- **`store(Request)`:** valida os IDs de frota/trem/carro/eixo e o tipo; verifica os vínculos entre os quatro níveis; bloqueia o eixo, consulta a instalação ativa do equipamento correspondente e salva o `eixo_id`, `rodeiro_id` ou `motor_id`, além do autor, prioridade, `motivo_retirada_id` obrigatório e observações complementares opcionais. O motivo deve existir, estar ativo e corresponder ao tipo de equipamento. O número de série não é digitado nem confiado ao formulário.
 - **`resolver(Request, PendenciaEquipamento)`:** exige justificativa, bloqueia o registro via `lockForUpdate()` e altera o estado somente quando a pendência está aberta.
 - **`DB::transaction()`:** garante atomicidade do encerramento.
 - **`Rule::in()`:** impede prioridades e tipos fora dos conjuntos autorizados.
@@ -80,7 +84,7 @@ Após os testes, acesse `http://sgr-m.test/pendencias` autenticado no sistema.
 
 1. Abrir o módulo de pendências e selecionar **Registrar pendência**.
 2. Selecionar frota, trem, carro e posição do eixo; em seguida, escolher rodeiro ou motor.
-3. Confirmar que o sistema exibe automaticamente a série instalada e informar a descrição e a prioridade.
+3. Confirmar a série instalada; escolher um motivo/defeito do catálogo, a prioridade e, opcionalmente, descrever observações complementares.
 4. Conferir que o registro aparece como **Aberta** na listagem, com a posição de origem.
 4. Aplicar filtros por tipo e situação.
 5. Cadastrar uma pendência crítica e outra baixa para conferir a ordenação.
@@ -91,11 +95,11 @@ Após os testes, acesse `http://sgr-m.test/pendencias` autenticado no sistema.
 
 ## 7. Testes, evidências e limitações
 
-A suíte `PendenciaEquipamentoTest.php` foi atualizada com dez cenários: visitante redirecionado, acesso dos três perfis, exibição automática de série por posição, cadastro de rodeiro, cadastro de motor, hierarquia adulterada, posição sem instalação ativa, resolução com justificativa, dupla resolução e ordenação por prioridade.
+A suíte `PendenciaEquipamentoTest.php` foi atualizada com doze cenários, incluindo recusa de motivo de tipo incorreto e obrigatoriedade do motivo com observações opcionais. Os dez cenários originais incluem: visitante redirecionado, acesso dos três perfis, exibição automática de série por posição, cadastro de rodeiro, cadastro de motor, hierarquia adulterada, posição sem instalação ativa, resolução com justificativa, dupla resolução e ordenação por prioridade.
 
-**Evidência:** primeira execução local informou 7 testes falhos e 1 aprovado, devido ao Model tentar consultar `pendencia_equipamentos` em vez da tabela criada `pendencias_equipamentos`. O Model foi corrigido para definir `protected $table` explicitamente. A aprovação da segunda execução ainda depende de confirmação do desenvolvedor.
+**Evidência:** o desenvolvedor informou aprovação dos testes da versão anterior. A evolução para motivo catalogado e observações ainda não foi testada no ambiente local; a aprovação desta versão depende da execução.
 
-**Limitações:** não inclui priorização combinada com periodicidade/diâmetro, regras automáticas de abertura, vínculo com motivos de retirada, edição de pendências, auditoria do usuário resolutor ou painel gerencial. Esses pontos pertencem às próximas etapas.
+**Limitações:** não inclui priorização combinada com periodicidade/diâmetro, regras automáticas de abertura, edição de pendências, auditoria do usuário resolutor ou painel gerencial. Esses pontos pertencem às próximas etapas.
 
 ## 8. Conceitos acadêmicos aplicados e pontos para apresentação
 
@@ -112,3 +116,11 @@ A suíte `PendenciaEquipamentoTest.php` foi atualizada com dez cenários: visita
 ## 9. Evolução do cadastro: localização em vez de série
 
 A mudança preserva as pendências antigas: a nova coluna `eixo_id` é opcional porque registros previamente criados não armazenavam a posição. No cadastro novo, o campo é obrigatório e a série é obtida pela instalação ativa. A listagem mostra a localização histórica quando disponível; nos registros antigos, informa que não foi registrada. Mesmo após a substituição do equipamento, a pendência permanece associada ao item originalmente apontado e à posição de origem. A interface utiliza seletores dependentes por GET; a verificação definitiva ocorre no POST, no servidor.
+
+## 10. Evolução: motivo catalogado e observações complementares
+
+A tela de cadastro passou a exigir um motivo ativo da tabela `motivos_retirada`, com filtragem por `tipo_equipamento` (rodeiro ou motor). Também passou a aceitar `observacoes` opcionais de até 2.000 caracteres. Os registros antigos permanecem compatíveis porque a nova chave estrangeira é nullable; o controller exige motivo somente nos novos cadastros. A coluna `descricao` é preenchida com a descrição catalogada para garantir compatibilidade com a listagem e com históricos anteriores. A regra de compatibilidade entre motivo e tipo é validada no servidor, não apenas na interface.
+
+**Arquivo de migração:** `2026_11_22_140000_add_motivo_and_observacoes_to_pendencias_equipamentos.php`.
+
+**Procedimento:** após backup do banco de desenvolvimento, executar `git pull origin feature/entrega-03-consulta-equipamentos`, `php artisan migrate`, `php artisan test --filter=PendenciaEquipamentoTest` e `php artisan test`. Não é necessário executar novamente o seeder de motivos se os 14 registros já constarem no banco.
