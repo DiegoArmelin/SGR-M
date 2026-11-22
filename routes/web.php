@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ConsultaEquipamentosController;
+use App\Http\Controllers\FrotaController;
+use App\Http\Controllers\TremController;
 
 /*
 |--------------------------------------------------------------------------
@@ -58,6 +60,26 @@ Route::middleware('auth')->group(function () {
     Route::get('/equipamentos', [ConsultaEquipamentosController::class, 'index'])
         ->middleware('perfil:administrador,gestor,tecnico')
         ->name('equipamentos.index');
+
+    // Consulta de frotas e trens: todos os perfis autenticados.
+    Route::middleware('perfil:administrador,gestor,tecnico')->group(function () {
+        Route::get('/frotas', [FrotaController::class, 'index'])->name('frotas.index');
+        Route::get('/trens', [TremController::class, 'index'])->name('trens.index');
+    });
+
+    // Cadastros: somente administrador, com rotas estáticas antes das parametrizadas.
+    Route::middleware('perfil:administrador')->group(function () {
+        Route::get('/frotas/criar', [FrotaController::class, 'create'])->name('frotas.create');
+        Route::post('/frotas', [FrotaController::class, 'store'])->name('frotas.store');
+        Route::get('/frotas/{frota}/editar', [FrotaController::class, 'edit'])->name('frotas.edit');
+        Route::put('/frotas/{frota}', [FrotaController::class, 'update'])->name('frotas.update');
+        Route::delete('/frotas/{frota}', [FrotaController::class, 'destroy'])->name('frotas.destroy');
+        Route::get('/trens/criar', [TremController::class, 'create'])->name('trens.create');
+        Route::post('/trens', [TremController::class, 'store'])->name('trens.store');
+        Route::get('/trens/{trem}/editar', [TremController::class, 'edit'])->name('trens.edit');
+        Route::put('/trens/{trem}', [TremController::class, 'update'])->name('trens.update');
+        Route::delete('/trens/{trem}', [TremController::class, 'destroy'])->name('trens.destroy');
+    });
 
     // Encerrar sessão.
     Route::post('/logout', [
