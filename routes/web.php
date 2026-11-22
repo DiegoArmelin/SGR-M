@@ -77,6 +77,14 @@ Route::middleware('auth')->group(function () {
         ->middleware('perfil:administrador,gestor,tecnico')
         ->name('dashboard.gerencial');
 
+    // Aba histórica e relatório imprimível preservam os filtros selecionados.
+    Route::get('/indicadores/historico', [DashboardGerencialController::class, 'historico'])
+        ->middleware('perfil:administrador,gestor,tecnico')
+        ->name('dashboard.historico');
+    Route::get('/indicadores/historico/imprimir', [DashboardGerencialController::class, 'imprimirHistorico'])
+        ->middleware('perfil:administrador,gestor,tecnico')
+        ->name('dashboard.historico.imprimir');
+
     // Ranking consolidado de pendências e condições: leitura para os três perfis.
     Route::get('/ranking', [RankingPriorizacaoController::class, 'index'])
         ->middleware('perfil:administrador,gestor,tecnico')
