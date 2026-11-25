@@ -160,9 +160,24 @@ class RankingPriorizacaoTest extends TestCase
         $this->actingAs(User::factory()->create(['perfil' => 'gestor']))
             ->get(route('ranking.index'))
             ->assertOk()
-            ->assertSeeInOrder(['RD-120', 'RD-101', 'RD-100'])
+            ->assertSeeInOrder(['RD-120', 'RD-101'])
+            ->assertDontSee('RD-100')
             ->assertDontSee('RD-099')
-            ->assertViewHas('totalPeriodicidades', 3);
+            ->assertViewHas('totalPeriodicidades', 2);
+    }
+
+    /** RD15: 100% exato não atende ao critério; somente valores superiores. */
+    public function test_periodicidade_exatamente_100_nao_atende_ao_criterio(): void
+    {
+        $this->instalar('I', 'I01', 'I011', 1, 'RD-LIM-A', 'rodeiro', ['periodicidade' => 100]);
+        $this->instalar('I', 'I01', 'I011', 2, 'RD-LIM-B', 'rodeiro', ['periodicidade' => 100.01]);
+
+        $this->actingAs(User::factory()->create(['perfil' => 'gestor']))
+            ->get(route('ranking.index'))
+            ->assertOk()
+            ->assertSee('RD-LIM-B')
+            ->assertDontSee('RD-LIM-A')
+            ->assertViewHas('totalPeriodicidades', 1);
     }
 
     public function test_filtro_de_diametro_nao_afeta_periodicidade_ou_pendencias(): void
@@ -286,8 +301,9 @@ class RankingPriorizacaoTest extends TestCase
             ->get(route('ranking.index', ['tipo' => 'motor']))
             ->assertOk()
             ->assertSee('Periodicidade dos motores')
-            ->assertSeeInOrder(['MT-110', 'MT-105', 'MT-100'])
-            ->assertViewHas('totalPeriodicidades', 3)
+            ->assertSeeInOrder(['MT-110', 'MT-105'])
+            ->assertDontSee('MT-100')
+            ->assertViewHas('totalPeriodicidades', 2)
             ->assertViewHas('periodicidades105', 2)
             ->assertViewHas('periodicidades110', 1);
     }

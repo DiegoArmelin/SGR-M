@@ -129,7 +129,7 @@
                 @foreach(['rodeiro'=>'Rodeiros','motor'=>'Motores'] as $tipo=>$rotulo)
                     @php $percentual=$pct($dados['periodicidade'][$tipo],$dados['instalados'][$tipo]); @endphp
                     <div class="dg-card dg-amber">
-                        <small>{{ $rotulo }} com periodicidade ≥ 100%</small>
+                        <small>{{ $rotulo }} com periodicidade &gt; 100%</small>
                         <strong>{{ $dados['periodicidade'][$tipo] }} <span style="font-size:15px">{{ number_format($percentual,1,',','.') }}%</span></strong>
                         <span class="dg-sub">de {{ $dados['instalados'][$tipo] }} instalados</span>
                         <div class="dg-track"><div class="dg-fill" style="--dg-pct:{{ $percentual }}%"></div></div>

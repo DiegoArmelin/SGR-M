@@ -19,7 +19,7 @@ Apresentar a situação atual do parque instalado e disponibilizar uma **aba de 
 | Pendências abertas | Equipamentos distintos afetados e total de ocorrências abertas |
 | Críticas e altas | Cards destacados separadamente, para rodeiros e motores |
 | Pendências encerradas nos últimos 30 dias | Ocorrências com situação `resolvida` e `resolvida_em` nos últimos 30 dias corridos, inclusive hoje, respeitando o filtro de frota |
-| Condições | Periodicidade >=100% para rodeiros e motores, diâmetros de rodeiros <745 mm e críticos <=742 mm |
+| Condições | Periodicidade >100% para rodeiros e motores, diâmetros de rodeiros <745 mm e críticos <=742 mm |
 
 A informação **trens cadastrados por frota** foi removida da tela. Também foram removidos os cards sobre equipamentos sem leitura de periodicidade. Todos os indicadores desta aba refletem a **situação atual**, salvo pendências encerradas, que usam a data de resolução.
 

@@ -21,7 +21,7 @@ class DashboardGerencialService
         foreach (['rodeiro', 'motor'] as $tipo) {
             $base = $this->instalacoesAtivas($tipo, $frota);
             $instalados[$tipo] = (clone $base)->count();
-            $periodicidade[$tipo] = (clone $base)->where('eq.periodicidade', '>=', 100)->count();
+            $periodicidade[$tipo] = (clone $base)->where('eq.periodicidade', '>', 100)->count();
         }
 
         $rodeiros = $this->instalacoesAtivas('rodeiro', $frota);

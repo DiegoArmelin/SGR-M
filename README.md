@@ -53,9 +53,9 @@ Importação unificada de **periodicidade dos rodeiros e motores, diâmetros LR 
 
 ### 4.4. Priorização de equipamentos — implementada e validada
 
-A visualização é separada nas abas **Rodeiros** e **Motores**. Na aba de rodeiros, aparecem três tabelas: pendências técnicas (crítica → alta → média → baixa), diâmetros abaixo de 745 mm (menor primeiro, incluindo card de críticos <= 742 mm) e periodicidade >= 100% (maior percentual primeiro). A aba de motores apresenta **pendências e periodicidade**, sem diâmetro.
+A visualização é separada nas abas **Rodeiros** e **Motores**. Na aba de rodeiros, aparecem três tabelas: pendências técnicas (crítica → alta → média → baixa), diâmetros abaixo de 745 mm (menor primeiro, incluindo card de críticos <= 742 mm) e periodicidade > 100% (maior percentual primeiro). A aba de motores apresenta **pendências e periodicidade**, sem diâmetro.
 
-Cada tabela apresenta os **10 primeiros registros** após seus próprios filtros de frota/trem/carro, e a tabela de pendências também aceita filtro por prioridade. Os cards de pendências mostram total, críticas, altas, médias e baixas; os de periodicidade, totais >=100%, >=105% e >=110%. A seleção de uma tabela não altera as outras. Os limites são apenas parâmetros acadêmicos de apoio à gestão.
+Cada tabela apresenta os **10 primeiros registros** após seus próprios filtros de frota/trem/carro, e a tabela de pendências também aceita filtro por prioridade. Os cards de pendências mostram total, críticas, altas, médias e baixas; os de periodicidade, totais >100%, >=105% e >=110%. A seleção de uma tabela não altera as outras. Os limites são apenas parâmetros acadêmicos de apoio à gestão.
 
 ### 4.5. Movimentação de equipamentos — implementada
 

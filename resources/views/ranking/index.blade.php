@@ -176,11 +176,11 @@
 
         <section class="rank-section" id="periodicidades">
             <h2>{{ $tipo === 'rodeiro' ? '3' : '2' }}. Periodicidade dos {{ $tipo === 'rodeiro' ? 'rodeiros' : 'motores' }}</h2>
-            <p class="rank-description">Periodicidade vencida (maior ou igual a 100%), ordenada do maior percentual para o menor.</p>
+            <p class="rank-description">Periodicidade vencida (superior a 100%), ordenada do maior percentual para o menor.</p>
             @include('ranking.partials.filtros', ['prefixo'=>'r','mostrarPrioridade'=>false])
 
             <div class="rank-cards">
-                @foreach([['≥ 100%',$totalPeriodicidades,'rc-total'],['≥ 105%',$periodicidades105,'rc-atencao'],['≥ 110%',$periodicidades110,'rc-critica']] as [$rotulo,$quantidade,$classe])
+                @foreach([['> 100%',$totalPeriodicidades,'rc-total'],['≥ 105%',$periodicidades105,'rc-atencao'],['≥ 110%',$periodicidades110,'rc-critica']] as [$rotulo,$quantidade,$classe])
                     @php $porcentagem=$pct($quantidade,$instaladosPeriodicidade); @endphp
                     <div class="rank-card {{ $classe }}">
                         <small>Periodicidade {{ $rotulo }}</small>
@@ -190,7 +190,7 @@
                     </div>
                 @endforeach
             </div>
-            <p class="rank-legend"><strong>Legenda:</strong> porcentagem sobre os equipamentos instalados após os filtros de periodicidade. Faixas cumulativas: ≥110% também integra ≥105% e ≥100%. Itens sem medição contam no total instalado.</p>
+            <p class="rank-legend"><strong>Legenda:</strong> porcentagem sobre os equipamentos instalados após os filtros de periodicidade. Faixas cumulativas: ≥110% também integra ≥105% e &gt;100%. Itens sem medição contam no total instalado.</p>
             <p class="rank-small">Exibindo os 10 maiores percentuais com os filtros aplicados.</p>
             <div class="rank-scroll"><table class="rank-table">
                 <thead><tr><th>Posição no ranking</th><th>Trem</th><th>Carro–posição</th><th>Série</th><th>Periodicidade</th><th>Ações</th></tr></thead>
@@ -208,7 +208,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6">Nenhum equipamento com periodicidade a partir de 100%.</td></tr>
+                    <tr><td colspan="6">Nenhum equipamento com periodicidade superior a 100%.</td></tr>
                 @endforelse
                 </tbody>
             </table></div>

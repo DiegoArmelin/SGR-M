@@ -15,13 +15,13 @@ Organizar a consulta de priorização em abas superiores distintas para **Rodeir
 |---|---|---|---|
 | Pendências | Somente pendências abertas do equipamento atualmente instalado | Crítica, alta, média, baixa | 10 primeiras |
 | Diâmetros | Rodeiros instalados com menor diâmetro LR/LO inferior a 745 mm | Menor diâmetro primeiro | 10 primeiros |
-| Periodicidade | Rodeiros **ou motores** instalados com periodicidade maior ou igual a 100% | Maior percentual primeiro | 10 primeiros |
+| Periodicidade | Rodeiros **ou motores** instalados com periodicidade superior a 100% | Maior percentual primeiro | 10 primeiros |
 
 **Filtros independentes:** cada bloco possui filtros próprios de **frota, trem e carro**. O bloco de pendências também oferece prioridade. Ao aplicar uma prioridade, os cinco cards continuam mostrando a distribuição por categoria da localização selecionada; a lista de 10 é filtrada pela prioridade. Ao aplicar os filtros de diâmetro, a lista de pendências e a de periodicidade mantêm seus critérios originais. A aba seleciona rodeiros ou motores e mantém a separação por tipo.
 
 **Cards do bloco de pendências:** total com filtros de localização; quantidade por prioridade crítica, alta, média e baixa. Todos contam ocorrências abertas de equipamentos instalados, não apenas as 10 primeiras linhas.
 
-**Cards do bloco de periodicidade:** total com periodicidade >=100%, quantidade >=105% e >=110%, em rodeiros ou motores, respeitando os filtros de frota/trem/carro da própria seção.
+**Cards do bloco de periodicidade:** total com periodicidade >100%, quantidade >=105% e >=110%, em rodeiros ou motores, respeitando os filtros de frota/trem/carro da própria seção.
 
 **Cards do bloco de diâmetros:** 
 - **Total abaixo de 745 mm:** conta os rodeiros que atendem à condição após aplicação dos filtros de diâmetro.
@@ -52,7 +52,7 @@ Nenhuma migration ou seeder é necessária; o módulo utiliza os dados persistid
 - **`consultaPendencias()`:** seleciona somente pendências abertas cujo equipamento e eixo correspondem à instalação ativa, ordenadas por criticidade.
 - **`menorDiametroSql()`:** expressão `CASE` compatível com SQLite e MySQL, que usa a menor medida disponível entre LR e LO mesmo quando uma das leituras está vazia.
 - **`consultaDiametros()`:** aplica limite de 745 mm; permite contagens independentes para o card de menor ou igual a 742 mm.
-- **`consultaPeriodicidades()`:** consulta rodeiros ou motores instalados com percentual maior ou igual a 100%, conta as faixas >=105 e >=110 e ordena de modo decrescente.
+- **`consultaPeriodicidades()`:** consulta rodeiros ou motores instalados com percentual superior a 100%, conta as faixas >=105 e >=110 e ordena de modo decrescente.
 - **`limit(10)`:** restringe a consulta de cada tabela às primeiras 10 posições, sem limitar os totais calculados para os cards.
 - **`RankingPriorizacaoController::index()`:** valida tipos e códigos, e rejeita a associação de carro com trem incorreto.
 - **Partial Blade de filtros:** reaproveita o layout dos três formulários. O JavaScript apenas ajusta visualmente as opções de carro em cada formulário; todas as validações permanecem no servidor.
@@ -82,7 +82,7 @@ A rota continua `http://sgr-m.test/ranking`.
 5. Conferir cards de diâmetros: abaixo de 745 mm e críticos com menor diâmetro até 742 mm.
 6. Filtrar diâmetros por frota/trem/carro e verificar que os cards acompanham essa seleção.
 7. Confirmar a ordenação do menor diâmetro até o maior, mostrando no máximo 10 linhas.
-8. Confirmar a periodicidade da maior para a menor, com no máximo 10 linhas e três cards >=100%, >=105% e >=110%.
+8. Confirmar a periodicidade da maior para a menor, com no máximo 10 linhas e três cards >100%, >=105% e >=110%.
 9. Aplicar filtro em uma tabela e observar que as demais não mudam.
 10. Alternar para Motores e confirmar que pendências e periodicidade dos motores aparecem, sem tabela de diâmetros.
 11. Entrar como gestor: a consulta permanece liberada, mas a ação Substituir não aparece.
@@ -110,7 +110,7 @@ A suíte Feature cobre autorização, separação de abas, precedência de pend�
 
 ## 9. Evolução: motor com periodicidade, três níveis de filtragem e novos cards
 
-O ranking passa a apresentar periodicidade tanto para rodeiros quanto para motores. A estrutura de dados dos motores é ampliada por uma migration do Módulo 04 (consulte a documentação de importação); não existem campos de diâmetro nos motores. As três seções utilizam filtros de frota, trem e carro independentes. Pendências exibem cinco cards: total e quatro níveis de criticidade. Periodicidade exibe três cards: valores >=100%, >=105% e >=110%. Cada card é calculado sobre o conjunto filtrado completo, enquanto a tabela mantém somente o Top 10.
+O ranking passa a apresentar periodicidade tanto para rodeiros quanto para motores. A estrutura de dados dos motores é ampliada por uma migration do Módulo 04 (consulte a documentação de importação); não existem campos de diâmetro nos motores. As três seções utilizam filtros de frota, trem e carro independentes. Pendências exibem cinco cards: total e quatro níveis de criticidade. Periodicidade exibe três cards: valores >100%, >=105% e >=110%. Cada card é calculado sobre o conjunto filtrado completo, enquanto a tabela mantém somente o Top 10.
 
 ## 10. Evolução — Indicadores proporcionais ao parque instalado
 
@@ -124,7 +124,7 @@ Os cards de pendências, diâmetro e periodicidade agora apresentam **quantidade
 | Pendências — crítica/alta/média/baixa | Equipamentos distintos com ocorrência aberta da respectiva prioridade | Equipamentos instalados na localização filtrada | Porcentagem afetada por prioridade |
 | Diâmetro abaixo de 745 mm | Rodeiros instalados cujo menor diâmetro é inferior a 745 mm | Rodeiros instalados na localização filtrada | Incidência de diâmetro de atenção |
 | Diâmetro crítico ≤742 mm | Rodeiros instalados cujo menor diâmetro é menor ou igual a 742 mm | Rodeiros instalados na localização filtrada | Incidência de diâmetro crítico |
-| Periodicidade ≥100/105/110% | Rodeiros ou motores instalados que atendem ao respectivo limite | Equipamentos do tipo instalados na localização filtrada | Incidência de periodicidade acima da faixa |
+| Periodicidade >100%, ≥105% e ≥110% | Rodeiros ou motores instalados que atendem ao respectivo limite | Equipamentos do tipo instalados na localização filtrada | Incidência de periodicidade acima da faixa |
 
 A fórmula para todos os cards é **percentual = numerador ÷ total instalado × 100**. Quando não existem equipamentos instalados no filtro, o percentual exibido é 0%, evitando divisão por zero.
 
