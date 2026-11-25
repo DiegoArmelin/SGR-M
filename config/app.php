@@ -78,7 +78,10 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    // O SGR-M é utilizado somente em português. O idioma é fixo para que
+    // arquivos .env antigos, criados com APP_LOCALE=en, não exibam
+    // mensagens em inglês.
+    'locale' => 'pt_BR',
 
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
 
