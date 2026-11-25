@@ -1,7 +1,7 @@
 # SGR-M — Sistema de Gestão de Rodeiros e Motores
 
 **Projeto Acadêmico — Laboratório de Engenharia de Software**  
-**Fatec São Paulo | Análise e Desenvolvimento de Sistemas | Grupo 10**
+**Fatec São Paulo | Análise e Desenvolvimento de Sistemas | Laboratório de Engenharia de Software | Grupo acadêmico**
 
 > **Aviso:** projeto exclusivamente acadêmico, desenvolvido com dados fictícios. Não representa um sistema oficial do Metrô de São Paulo e não substitui procedimentos técnicos, avaliações de manutenção ou regras operacionais de segurança.
 
@@ -41,15 +41,20 @@ O sistema procura consolidar informações que auxiliem a rastreabilidade e a id
 
 ### 4.1. Cadastro e consulta de equipamentos — implementados no escopo acadêmico
 
-A estrutura e a carga fictícia de frotas, trens, carros, eixos, rodeiros e motores foram implementadas. Há consulta por número de série, consulta hierárquica e CRUD de frotas/trens. Não há interfaces CRUD individuais de carros, eixos, rodeiros ou motores; no escopo entregue, esses dados são inicializados por seeders e consultados por número de série ou hierarquia. O CRUD administrativo de frotas/trens está disponível.
+A estrutura e a carga fictícia de frotas, trens, carros, eixos, rodeiros e motores foram implementadas. Há consulta por número de série, consulta hierárquica e CRUD de frotas/trens. Os dados iniciais de carros, eixos, rodeiros e motores são disponibilizados por cargas fictícias (seeders). O administrador dispõe de cadastro e edição de frotas e trens; não há interface individual de inclusão/edição para carros, eixos, rodeiros e motores. A consulta hierárquica e a pesquisa por série estão disponíveis aos três perfis.
 
 ### 4.2. Gestão de pendências — implementada
 
-Registro, consulta, filtragem e encerramento de pendências técnicas de rodeiros e motores, classificadas como **crítica, alta, média ou baixa**. Uma pendência aberta associada ao equipamento retirado é encerrada automaticamente após substituição bem-sucedida, preservando histórico e rastreabilidade. Há carga fictícia de 100 pendências abertas e 20 encerramentos adicionais para demonstração.
+Registro, consulta, filtragem e encerramento de pendências técnicas de rodeiros e motores, classificadas como **crítica, alta, média ou baixa**. Uma pendência aberta associada ao equipamento retirado é encerrada automaticamente após substituição bem-sucedida, preservando histórico e rastreabilidade. O sistema permite selecionar motivo de um catálogo por tipo de equipamento e informar observações. A carga de demonstração oferece **70 pendências abertas de rodeiros** (5 críticas, 10 altas, 40 médias e 15 baixas) e **30 pendências abertas de motores** (2 críticas, 4 altas, 17 médias e 7 baixas), além de 20 registros encerrados fictícios para os indicadores.
 
 ### 4.3. Importação de dados CSV — implementada e validada
 
-Importação unificada de **periodicidade dos rodeiros e motores, diâmetros LR e LO**, identificando frota, trem, carro, eixo e ambas as séries em um único CSV de 11 colunas. O sistema só atualiza condições com data posterior à última registrada, verifica a instalação ativa e executa alterações em transação. A importação disponibiliza relatório individual por equipamento, filtros de resultado e exportação em CSV. Acesso restrito ao administrador.
+Importação unificada de **periodicidade dos rodeiros e motores, diâmetros LR e LO**, identificando frota, trem, carro, eixo e ambas as séries em um único CSV de 11 colunas.
+
+```csv
+frota;trem;carro;posicao;serie_rodeiro;diametro_lr;diametro_lo;periodicidade;serie_motor;periodicidade_motor;data_atualizacao
+```
+ O sistema só atualiza condições com data posterior à última registrada, verifica a instalação ativa e executa alterações em transação. A importação disponibiliza relatório individual por equipamento, filtros de resultado e exportação em CSV. Arquivos estruturalmente incompatíveis ou que violem as validações de integridade são rejeitados; o resultado de uma importação bem-sucedida permite identificar registros atualizados e ignorados, com justificativa. Acesso restrito ao administrador.
 
 ### 4.4. Priorização de equipamentos — implementada e validada
 
@@ -59,11 +64,11 @@ Cada tabela apresenta os **10 primeiros registros** após seus próprios filtros
 
 ### 4.5. Movimentação de equipamentos — implementada
 
-A aplicação permite substituir rodeiros e motores por número de série, selecionar peças em estoque, registrar motivos de retirada por tipo, atualizar os status e preservar o histórico de instalações em transação.
+A aplicação permite substituir **rodeiros ou motores** por número de série, selecionar peças em estoque, registrar motivos de retirada por tipo, atualizar os status e preservar o histórico de instalações em uma transação de banco de dados. Não é permitido instalar uma peça já vinculada a outra instalação ativa. Na conclusão da substituição, pendências abertas vinculadas ao equipamento retirado naquela posição são encerradas automaticamente, sem afetar ocorrências de outros equipamentos.
 
 ### 4.6. Dashboard e indicadores — implementados e validados
 
-A página inicial apresenta uma central com cards de acesso rápido às funcionalidades, de acordo com o perfil. Separadamente, o Módulo 06 oferece a aba **Visão geral**, com parque de rodeiros e motores instalados, condições de diâmetro e periodicidade, pendências críticas/altas e pendências encerradas nos últimos 30 dias. A aba **Histórico de substituições** apresenta gráficos dos últimos seis meses, distribuição por motivos e comparação por frotas, com filtros e versão de impressão para **Salvar como PDF**. Um seeder específico gera 24 meses de movimentos totalmente fictícios (25 rodeiros e 20 motores por mês), sem modificar as instalações ativas.
+A página inicial apresenta uma central com cards de acesso rápido às funcionalidades, de acordo com o perfil. Separadamente, o Módulo 06 oferece a aba **Visão geral**, com parque de rodeiros e motores instalados, condições de diâmetro e periodicidade, pendências críticas/altas e pendências encerradas nos últimos 30 dias. A aba **Histórico de substituições** apresenta gráficos mensais dos últimos seis meses, **duas roscas independentes** para motivos de rodeiros e motores e comparação apenas das frotas fictícias I/J/L. Há filtros por período, frota e motivo e versão de impressão para **Salvar como PDF** no navegador. A visão geral inclui o indicador de tendência do saldo líquido de pendências (aberturas menos encerramentos) ao comparar os últimos 30 dias aos 30 anteriores. Um seeder específico gera 24 meses de movimentos totalmente fictícios (25 rodeiros e 20 motores por mês), sem modificar as instalações ativas.
 
 ### 4.7. Autenticação e controle de acesso — implementada
 
@@ -130,7 +135,7 @@ A modelagem inclui restrições para:
 - Impedir dois motores ativos em um mesmo eixo ou um mesmo motor ativo em dois eixos.
 - Preservar registros de instalações encerradas.
 
-As restrições de exclusividade de instalações ativas utilizam **colunas geradas e índices únicos no MySQL**. Elas não substituem as validações e transações a serem implementadas nos serviços da aplicação.
+As restrições de exclusividade de instalações ativas utilizam **colunas geradas e índices únicos no MySQL**, complementadas por validações e operações transacionais implementadas nos serviços da aplicação.
 
 ## 6. Status do desenvolvimento
 
@@ -144,7 +149,7 @@ Os módulos 01 a 06 foram implementados em branches de funcionalidade e integrad
 | 04 | Importação unificada de condições CSV com relatório por equipamento | Integrado e validado |
 | 05 | Ranking independente de pendências, diâmetros e periodicidades | Integrado e validado |
 | 06 | Indicadores gerenciais, histórico de substituições, gráficos e central inicial | Integrado e validado |
-| 07 | Revisão integrada, documentação e roteiro de demonstração | Em preparação |
+| 07 | Revisão integrada, documentação e plano de homologação | Integrado à `develop`; testes locais validados |
 
 **Limites de escopo:** não foram implementados CRUDs específicos de carros, eixos e equipamentos individuais nem gerenciamento visual de usuários. A exportação do histórico em PDF é realizada pela impressão do navegador (Salvar como PDF). A carga sintética de históricos não representa cronologia operacional real.
 
@@ -171,7 +176,7 @@ git switch develop
 git pull origin develop
 ```
 
-A branch `develop` integra os módulos validados. Para a entrega final, use a branch `feature/entrega-final-validacao-integrada` até a revisão ser aprovada.
+A branch `develop` contém os módulos e a revisão integrada já validados. Ajustes específicos da documentação da apresentação estão organizados na branch `docs/apresentacao-final-sgrm`, ainda sujeita à revisão do respectivo Pull Request.
 
 ### 7.3. Instalar dependências
 
@@ -304,16 +309,124 @@ Os relatórios detalhados ficam na pasta [`docs/`](docs/):
 - [Entrega 04 — Importação de Condições CSV](docs/04-importacao-periodicidade-csv.md).
 - [Entrega 05 — Ranking de Priorização](docs/05-ranking-priorizacao.md).
 - [Módulo 06 — Dashboard Gerencial e Histórico](docs/06-dashboard-gerencial.md).
+- [Módulo 07 — Plano de Homologação Integrada](docs/07-validacao-integrada-entrega-final.md).
+- [Apresentação Final — Roteiro de Slides e Evidências](docs/08-roteiro-apresentacao-final.md).
 
 Os documentos descrevem as decisões técnicas, os componentes implementados, os testes e as limitações de cada etapa. Consulte também o [Plano de validação integrada e roteiro da entrega final](docs/07-validacao-integrada-entrega-final.md).
 
-## 10. Participação e colaboração
+## 10. Arquitetura e funcionamento da aplicação
 
-O SGR-M é desenvolvido pelo **Grupo 10** da disciplina de Laboratório de Engenharia de Software da Fatec São Paulo.
+### 10.1. Camadas e responsabilidades
+
+A arquitetura utiliza o padrão **MVC**, complementado por classes de serviço para regras de negócio e consultas analíticas.
+
+```text
+Navegador — HTML, CSS, JavaScript e páginas Blade
+                       |
+                 Rotas web.php
+                       |
+            Middlewares (auth/perfil)
+                       |
+               Controllers Laravel
+                       |
+       Services e Models Eloquent / SQL
+                       |
+               Banco MySQL
+```
+
+| Camada | Responsabilidade | Local |
+|---|---|---|
+| Apresentação | Formulários, consultas, menus, cards e gráficos | `resources/views` |
+| Requisições | Recebimento, validação e encaminhamento das ações | `app/Http/Controllers` |
+| Autorização | Restrições por autenticação e perfil | `app/Http/Middleware` e `routes/web.php` |
+| Regras de negócio | Substituição, importação, ranking e agregações gerenciais | `app/Services` |
+| Persistência | Entidades, relacionamentos e consultas | `app/Models` e MySQL |
+| Estrutura de dados | Migrations e dados fictícios reproduzíveis | `database/migrations` e `database/seeders` |
+| Qualidade | Testes funcionais de integração | `tests/Feature` |
+
+### 10.2. Fluxo integrado das funcionalidades
+
+1. **Localizar:** consultar a série atual no contexto Frota → Trem → Carro → Eixo.
+2. **Registrar:** cadastrar uma pendência para o equipamento instalado, informando prioridade e motivo.
+3. **Priorizar:** analisar as pendências, os diâmetros LR/LO e a periodicidade importada no ranking.
+4. **Substituir:** registrar a retirada da peça, instalar outra série em estoque e preservar o histórico, encerrando as pendências correspondentes à peça retirada.
+5. **Acompanhar:** consultar o parque, o histórico, os gráficos e os indicadores consolidados.
+
+### 10.3. Regras principais de negócio
+
+- **Localização:** cada posição de eixo possui no máximo uma instalação ativa de rodeiro e outra de motor.
+- **Prioridade das pendências:** crítica → alta → média → baixa.
+- **Diâmetros de rodeiro:** alerta para o menor entre LR e LO abaixo de **745 mm**; indicador crítico para valor **menor ou igual a 742 mm**.
+- **Periodicidade:** o CSV informa diretamente o percentual, sem recalcular quilometragem; as tabelas e cards distinguem as faixas **≥100%**, **≥105%** e **≥110%**.
+- **Atualização temporal:** um registro de condição é atualizado apenas se a data de origem for posterior à última data do equipamento.
+- **Tendência:** comparação dos saldos de aberturas menos encerramentos em dois intervalos consecutivos de 30 dias.
+- **Rastreabilidade:** instalações retiradas e motivos permanecem registrados; as pendências resolvidas não participam das listas de ocorrências abertas.
+
+Os limites dimensionais e de periodicidade constituem **critérios de demonstração acadêmica**, não autorização para decisões operacionais de manutenção.
+
+## 11. Testes e homologação acadêmica
+
+A suíte automatizada utiliza os recursos de testes do Laravel. Durante o desenvolvimento, os módulos e a revisão integrada foram testados e os resultados **validados no Laragon** pelo desenvolvedor. Isso não equivale à homologação em produção.
+
+```bash
+php artisan optimize:clear
+php artisan migrate:status
+php artisan test
+```
+
+Para executar grupos específicos:
+
+```bash
+php artisan test --filter=DashboardGerencialTest
+php artisan test --filter=HistoricoSubstituicoesTest
+php artisan test --filter=MenuSuperiorTest
+php artisan test --filter=ImportacaoPeriodicidadeCsvTest
+```
+
+O [plano de validação integrada](docs/07-validacao-integrada-entrega-final.md) reúne **20 cenários de homologação** que abrangem autenticação, consultas, pendências, substituições, importação, ranking, indicadores e exportação. A aprovação acadêmica formal depende da avaliação docente; não houve homologação corporativa da aplicação.
+
+## 12. Operação e treinamento — visão geral
+
+O sistema é aberto pela central de funcionalidades em `/dashboard`. Consulte o resumo de operação abaixo; o treinamento proposto utiliza uma base com dados fictícios e exercícios por perfil.
+
+| Atividade | Caminho na aplicação | Perfil |
+|---|---|---|
+| Consultar estrutura de equipamentos | Consultas → Consulta hierárquica | Todos |
+| Localizar equipamento por série | Consultas → Consulta por série | Todos |
+| Registrar ou consultar pendência | Pendências / card da página inicial | Todos |
+| Executar substituição de equipamento | Consulta/pendência → Substituir | Administrador e técnico |
+| Visualizar ranking de prioridades | Ranking | Todos |
+| Consultar indicadores e tendência | Indicadores → Visão geral | Todos |
+| Ver gráficos e preparar relatório PDF | Indicadores → Histórico de substituições | Todos |
+| Gerenciar frotas e trens | Administração | Administrador |
+| Importar CSV de condições | Administração → Importar condições (CSV) | Administrador |
+
+**Treinamento sugerido:** autenticação e navegação; consultas; pendências; substituição para usuários autorizados; importação e cadastros para administradores; ranking, indicadores e exercícios práticos. Utilizar sempre séries e dados fictícios.
+
+## 13. Atendimento à segunda fase da documentação acadêmica
+
+O trabalho da disciplina prevê os itens **3.g a 3.l** após a especificação inicial (3.a a 3.f). O estado dos materiais no repositório é o seguinte:
+
+| Item | Conteúdo | Base disponível no projeto |
+|---|---|---|
+| **3.g** | Definição das interfaces e justificativas de usabilidade | Interfaces Blade implementadas, menu responsivo e documentação dos módulos |
+| **3.h** | Documentação do sistema, código-fonte e execução | Este README, código versionado, migrations, seeders e documentação em `docs/` |
+| **3.i** | Procedimentos descritivos de testes | Testes em `tests/Feature` e matriz de homologação em `docs/07-validacao-integrada-entrega-final.md` |
+| **3.j** | Manual de operação | Resumo de operações acima e passos funcionais nos documentos dos módulos; manual acadêmico completo deve acompanhar a entrega |
+| **3.k** | Manual de treinamento | Sequência de capacitação proposta acima; roteiro formal de treinamento deve acompanhar a entrega |
+| **3.l** | Processo de homologação e aprovação | Critérios e cenários em `docs/07-validacao-integrada-entrega-final.md`; aprovação institucional não realizada |
+
+**Importante:** este README documenta as funcionalidades **efetivamente implementadas**. A primeira fase da proposta contém requisitos previstos que foram refinados ao longo das entregas. Não devem ser descritos como implementados: CRUD individual de todos os equipamentos, gestão visual de usuários, integração direta com sensores ou sistemas corporativos e geração de PDF binário pelo servidor.
+
+O roteiro para apresentação e demonstração está em [`docs/08-roteiro-apresentacao-final.md`](docs/08-roteiro-apresentacao-final.md). Recomenda-se privilegiar arquitetura, modelagem e regras de negócio nos slides, realizando a demonstração das telas ao vivo.
+
+## 14. Participação e colaboração
+
+O SGR-M é desenvolvido por uma equipe da disciplina de Laboratório de Engenharia de Software da Fatec São Paulo.
 
 Os integrantes podem colaborar no backend, frontend, banco de dados, testes, documentação e revisão de Pull Requests. Para contribuir diretamente, precisam ter acesso apropriado ao repositório; também podem utilizar forks e Pull Requests.
 
-## 11. Segurança e uso dos dados
+## 15. Segurança e uso dos dados
 
 O SGR-M utiliza dados fictícios para desenvolvimento, testes e demonstração. Os seeders de demonstração identificam explicitamente dados sintéticos; o ambiente acadêmico não deve ser confundido com sistema operacional.
 
