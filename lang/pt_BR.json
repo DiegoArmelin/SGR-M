@@ -1,0 +1,16 @@
+{
+    "Forbidden": "Acesso negado",
+    "Not Found": "Página não encontrada",
+    "Page Expired": "Página expirada",
+    "Pagination Navigation": "Navegação entre páginas",
+    "Payment Required": "Pagamento necessário",
+    "Server Error": "Erro interno do servidor",
+    "Service Unavailable": "Serviço indisponível",
+    "Showing": "Mostrando",
+    "Too Many Requests": "Muitas tentativas",
+    "Unauthorized": "Não autorizado",
+    "of": "de",
+    "results": "resultados",
+    "to": "a",
+    "Go to page :page": "Ir para a página :page"
+}
