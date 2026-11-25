@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Pendências: criticidade da ocorrência, sem incluir peças já retiradas.
  * Diâmetros: menor leitura LR/LO < 745 mm, ordenada do menor para o maior.
- * Periodicidade: percentual >= 100%, ordenado do maior para o menor.
+ * Periodicidade: percentual superior a 100%, ordenado do maior para o menor.
  *
  * A visão de motores possui somente pendências: motor não tem as medições
  * de diâmetro nem periodicidade no modelo atual.
@@ -226,7 +226,7 @@ class RankingPriorizacaoService
         $this->filtrarLocalizacao($consulta, $filtros, 'r');
 
         return $consulta
-            ->where('r.periodicidade', '>=', 100)
+            ->where('r.periodicidade', '>', 100)
             ->select([
                 'f.codigo as frota', 't.codigo as trem', 'c.codigo as carro',
                 'e.numero as posicao', 'e.id as eixo_id',

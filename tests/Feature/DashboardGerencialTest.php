@@ -120,6 +120,21 @@ class DashboardGerencialTest extends TestCase
         );
     }
 
+    /** RD15: 100% exato não entra no card; somente valores superiores. */
+    public function test_periodicidade_exatamente_100_nao_e_contabilizada(): void
+    {
+        $this->instalar('I', 'I01');
+        Rodeiro::where('numero_serie', 'RD-I01')->update(['periodicidade' => 100]);
+        Motor::where('numero_serie', 'MT-I01')->update(['periodicidade' => 100]);
+
+        $this->actingAs($this->gestor())
+            ->get(route('dashboard.gerencial'))->assertOk()
+            ->assertViewHas('dados', fn ($d) =>
+                $d['periodicidade']['rodeiro'] === 0 &&
+                $d['periodicidade']['motor'] === 0
+            );
+    }
+
     /** Duas pendências em um mesmo equipamento contam como uma peça afetada. */
     public function test_conta_ocorrencias_separado_de_equipamentos_distintos(): void
     {
