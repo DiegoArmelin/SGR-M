@@ -83,8 +83,9 @@
                             <th>Eixo</th>
                             <th>Rodeiro instalado</th>
                             <th>Diâmetro LR / LO (mm)</th>
-                            <th>Periodicidade (%)</th>
+                            <th>Periodicidade do rodeiro (%)</th>
                             <th>Motor instalado</th>
+                            <th>Periodicidade do motor (%)</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
@@ -111,6 +112,7 @@
                                     {{ $motor?->numero_serie ?? 'Sem motor instalado' }}
                                     @if($motor)<div class="status-note">Status: {{ $motor->status }}</div>@endif
                                 </td>
+                                <td>{{ $motor?->periodicidade !== null ? number_format((float)$motor->periodicidade, 2, ',', '.') : '—' }}</td>
                                 <td>
                                     <a href="{{ route('equipamentos.historico', $eixo) }}">Histórico</a>
                                     @if(auth()->user()->temPerfil('administrador', 'tecnico'))
@@ -120,7 +122,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6">Não há eixos cadastrados neste carro.</td></tr>
+                            <tr><td colspan="7">Não há eixos cadastrados neste carro.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

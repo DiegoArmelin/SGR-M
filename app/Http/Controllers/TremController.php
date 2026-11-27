@@ -64,7 +64,8 @@ class TremController extends Controller
     {
         return view('trens.form', [
             'trem' => $trem,
-            'frotas' => Frota::where('ativa', true)->orWhereKey($trem->frota_id)->orderBy('codigo')->get(),
+            // orWhereKey() não existe no Eloquent Builder; orWhere pela chave mantém a frota atual.
+            'frotas' => Frota::where('ativa', true)->orWhere('id', $trem->frota_id)->orderBy('codigo')->get(),
         ]);
     }
 

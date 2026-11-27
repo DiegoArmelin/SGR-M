@@ -43,15 +43,18 @@ class MensagensPortuguesTest extends TestCase
             ]);
     }
 
-    public function test_excesso_de_tentativas_exibe_pagina_em_portugues(): void
+    public function test_excesso_de_tentativas_exibe_mensagem_em_portugues(): void
     {
         for ($i = 0; $i < 5; $i++) {
             $this->post(route('login.submit'), ['email' => 'a@b.test', 'password' => 'senha-errada']);
         }
 
-        $this->post(route('login.submit'), ['email' => 'a@b.test', 'password' => 'senha-errada'])
-            ->assertStatus(429)
-            ->assertSee('Muitas tentativas');
+        // O bloqueio é por e-mail + IP e aparece no formulário de login (D08).
+        $this->from(route('login'))
+            ->post(route('login.submit'), ['email' => 'a@b.test', 'password' => 'senha-errada'])
+            ->assertRedirect(route('login'));
+
+        $this->assertStringContainsString('Muitas tentativas de acesso', session('errors')->first('email'));
     }
 
     public function test_paginacao_exibe_textos_em_portugues(): void

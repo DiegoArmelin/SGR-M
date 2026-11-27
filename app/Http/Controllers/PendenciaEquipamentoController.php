@@ -29,12 +29,12 @@ class PendenciaEquipamentoController extends Controller
     public function index(Request $request): View
     {
         $filtros = $request->validate([
-            'situacao' => ['nullable', Rule::in(['aberta', 'resolvida'])],
+            'situacao' => ['nullable', Rule::in(['aberta', 'resolvida', 'cancelada'])],
             'tipo' => ['nullable', Rule::in(['rodeiro', 'motor'])],
         ]);
 
         $pendencias = PendenciaEquipamento::query()
-            ->with(['rodeiro', 'motor', 'motivoRetirada', 'autor', 'eixo.carro.trem.frota',
+            ->with(['rodeiro', 'motor', 'motivoRetirada', 'autor', 'canceladaPor', 'eixo.carro.trem.frota',
                 // Carrega o vínculo atual apenas para habilitar a ação de troca
                 // quando a pendência ainda se refere ao item instalado.
                 'eixo.instalacoesRodeiros' => fn ($q) => $q->whereNull('data_retirada'),
@@ -213,4 +213,41 @@ class PendenciaEquipamentoController extends Controller
             ->with('success', 'Pendência registrada com sucesso.');
     }
 
+    /**
+     * Cancela uma pendência aberta registrada por engano (somente administrador).
+     *
+     * O registro é preservado com data, autor e justificativa. A situação
+     * "cancelada" fica fora do ranking e dos indicadores, que consideram
+     * apenas pendências abertas.
+     */
+    public function cancelar(Request $request, PendenciaEquipamento $pendencia): RedirectResponse
+    {
+        $dados = $request->validate(
+            ['motivo_cancelamento' => ['required', 'string', 'min:10', 'max:500']],
+            [],
+            ['motivo_cancelamento' => 'justificativa do cancelamento']
+        );
+
+        DB::transaction(function () use ($pendencia, $dados, $request): void {
+            // Bloqueia a linha: uma substituição concorrente pode estar
+            // encerrando a mesma pendência neste instante.
+            $atual = PendenciaEquipamento::query()->whereKey($pendencia->id)->lockForUpdate()->firstOrFail();
+
+            if ($atual->situacao !== 'aberta') {
+                throw ValidationException::withMessages([
+                    'motivo_cancelamento' => 'Somente pendências abertas podem ser canceladas.',
+                ]);
+            }
+
+            $atual->update([
+                'situacao' => 'cancelada',
+                'cancelada_em' => now(),
+                'cancelada_por' => $request->user()->id,
+                'motivo_cancelamento' => trim($dados['motivo_cancelamento']),
+            ]);
+        });
+
+        return back()->with('success',
+            'Pendência cancelada. Ela permanece no histórico e deixou de contar no ranking e nos indicadores.');
+    }
 }

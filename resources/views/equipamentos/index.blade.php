@@ -44,8 +44,9 @@
                         @if ($tipo === 'rodeiro')
                             <th style="padding:12px;">Diâmetro LR (mm)</th>
                             <th style="padding:12px;">Diâmetro LO (mm)</th>
-                            <th style="padding:12px;">Periodicidade (%)</th>
                         @endif
+                        {{-- Rodeiros e motores recebem periodicidade pelo CSV. --}}
+                        <th style="padding:12px;">Periodicidade (%)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -57,11 +58,11 @@
                             @if ($tipo === 'rodeiro')
                                 <td style="padding:12px;">{{ $equipamento->diametro_lr !== null ? number_format((float) $equipamento->diametro_lr, 2, ',', '.') : '—' }}</td>
                                 <td style="padding:12px;">{{ $equipamento->diametro_lo !== null ? number_format((float) $equipamento->diametro_lo, 2, ',', '.') : '—' }}</td>
-                                <td style="padding:12px;">{{ $equipamento->periodicidade !== null ? number_format((float) $equipamento->periodicidade, 2, ',', '.') : '—' }}</td>
                             @endif
+                            <td style="padding:12px;">{{ $equipamento->periodicidade !== null ? number_format((float) $equipamento->periodicidade, 2, ',', '.') : '—' }}</td>
                         </tr>
                     @empty
-                        <tr><td style="padding:16px;" colspan="{{ $tipo === 'rodeiro' ? 5 : 2 }}">Nenhum equipamento encontrado.</td></tr>
+                        <tr><td style="padding:16px;" colspan="{{ $tipo === 'rodeiro' ? 5 : 3 }}">Nenhum equipamento encontrado.</td></tr>
                     @endforelse
                 </tbody>
             </table>

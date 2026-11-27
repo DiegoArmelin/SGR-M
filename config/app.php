@@ -65,7 +65,9 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    // Horário de Brasília: "hoje" (data da troca, limites do formulário,
+    // janelas de 30 dias) e os horários gravados seguem o horário local.
+    'timezone' => env('APP_TIMEZONE', 'America/Sao_Paulo'),
 
     /*
     |--------------------------------------------------------------------------

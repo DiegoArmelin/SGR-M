@@ -40,12 +40,13 @@ Route::middleware('guest')->group(function () {
         'showLoginForm'
     ])->name('login');
 
-    // Processar autenticação.
+    // Processar autenticação. O limite de tentativas (5 falhas por minuto,
+    // por e-mail + IP) fica no LoginController: o throttle por rota usava
+    // só o IP e contava também os logins corretos.
     Route::post('/login', [
         LoginController::class,
         'login'
-    ])->middleware('throttle:5,1')
-      ->name('login.submit');
+    ])->name('login.submit');
 
 });
 
@@ -127,6 +128,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/importacoes/periodicidade/relatorio.csv', [ImportacaoPeriodicidadeController::class, 'exportar'])
             ->name('importacoes.periodicidade.exportar');
     });
+
+    // Cancelamento de pendência registrada por engano: somente administrador,
+    // com justificativa obrigatória; o registro é preservado no histórico.
+    Route::patch('/pendencias/{pendencia}/cancelar', [PendenciaEquipamentoController::class, 'cancelar'])
+        ->middleware('perfil:administrador')
+        ->name('pendencias.cancelar');
 
     // Cadastros: somente administrador, com rotas estáticas antes das parametrizadas.
     Route::middleware('perfil:administrador')->group(function () {
