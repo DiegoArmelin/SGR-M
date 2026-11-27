@@ -24,6 +24,12 @@
     .situacao-tag { display:inline-block;padding:5px 9px;border-radius:5px;font-size:12px;white-space:nowrap; }
     .situacao-aberta { background:#dbeafe;color:#1e40af; }
     .situacao-resolvida { background:#e2e8f0;color:#475569; }
+    .situacao-cancelada { background:#fef2f2;color:#991b1b;text-decoration:line-through; }
+    .cancelar-pendencia { margin-top:8px;font-size:13px; }
+    .cancelar-pendencia summary { cursor:pointer;color:#991b1b; }
+    .cancelar-pendencia form { display:grid;gap:6px;margin-top:6px;min-width:220px; }
+    .cancelar-pendencia textarea { font:inherit;font-size:13px;padding:6px;border:1px solid #cbd5e1;border-radius:5px; }
+    .cancelar-pendencia button { justify-self:start;background:#991b1b;color:white;border:0;border-radius:5px;padding:7px 10px;font-weight:bold;cursor:pointer; }
     .acao-substituir { display:inline-block;background:#17365d;color:white;text-decoration:none;border-radius:5px;padding:9px 12px;font-size:13px;font-weight:bold;white-space:nowrap; }
     .acao-substituir:hover { background:#254f80; }
     @media(max-width:740px) {
@@ -37,7 +43,7 @@
 <main class="container">
     <section class="card">
         <h1 class="page-title">Gestão de pendências técnicas</h1>
-        <p>Pendências abertas são ordenadas por criticidade. Para encerrá-las, realize a substituição do equipamento.</p>
+        <p>Pendências abertas são ordenadas por criticidade. Para encerrá-las, realize a substituição do equipamento. Uma pendência registrada por engano pode ser cancelada pelo administrador, com justificativa.</p>
 
         @if(session('success'))
             <p role="status" style="color:#166534">{{ session('success') }}</p>
@@ -56,6 +62,7 @@
                     <option value="">Todas</option>
                     <option value="aberta" @selected(($filtros['situacao'] ?? '') === 'aberta')>Abertas</option>
                     <option value="resolvida" @selected(($filtros['situacao'] ?? '') === 'resolvida')>Resolvidas</option>
+                    <option value="cancelada" @selected(($filtros['situacao'] ?? '') === 'cancelada')>Canceladas</option>
                 </select>
             </div>
             <div class="form-group">
@@ -132,11 +139,14 @@
                                 @endif
                             </td>
                             <td>
-                                <span class="situacao-tag {{ $pendencia->situacao === 'aberta' ? 'situacao-aberta' : 'situacao-resolvida' }}">
-                                    {{ $pendencia->situacao === 'aberta' ? 'Aberta' : 'Resolvida' }}
+                                <span class="situacao-tag situacao-{{ $pendencia->situacao }}">
+                                    {{ ['aberta' => 'Aberta', 'resolvida' => 'Resolvida', 'cancelada' => 'Cancelada'][$pendencia->situacao] ?? $pendencia->situacao }}
                                 </span>
                                 @if($pendencia->situacao === 'resolvida' && $pendencia->resolvida_em)
                                     <div class="subtexto">{{ $pendencia->resolvida_em->format('d/m/Y') }}</div>
+                                @elseif($pendencia->situacao === 'cancelada' && $pendencia->cancelada_em)
+                                    <div class="subtexto">{{ $pendencia->cancelada_em->format('d/m/Y H:i') }} por {{ $pendencia->canceladaPor?->name ?? '—' }}</div>
+                                    <div class="subtexto">Justificativa: {{ $pendencia->motivo_cancelamento }}</div>
                                 @endif
                             </td>
                             <td>
@@ -147,10 +157,29 @@
                                     </a>
                                 @elseif($pendencia->situacao === 'resolvida')
                                     <span class="subtexto">Concluída</span>
+                                @elseif($pendencia->situacao === 'cancelada')
+                                    <span class="subtexto">Cancelada</span>
                                 @elseif(!auth()->user()->temPerfil('administrador', 'tecnico'))
                                     <span class="subtexto">Somente consulta</span>
                                 @else
                                     <span class="subtexto">Equipamento não está mais nesta posição</span>
+                                @endif
+
+                                {{-- Correção de registro feito por engano: só o administrador, com justificativa. --}}
+                                @if($pendencia->situacao === 'aberta' && auth()->user()->isAdministrador())
+                                    <details class="cancelar-pendencia">
+                                        <summary>Cancelar registro</summary>
+                                        <form method="POST" action="{{ route('pendencias.cancelar', $pendencia) }}"
+                                              onsubmit="return confirm('Cancelar esta pendência? Ela sairá do ranking e dos indicadores, mas continuará no histórico.');">
+                                            @csrf
+                                            @method('PATCH')
+                                            <label for="motivo-cancelamento-{{ $pendencia->id }}">Justificativa *</label>
+                                            <textarea id="motivo-cancelamento-{{ $pendencia->id }}" name="motivo_cancelamento"
+                                                      rows="2" minlength="10" maxlength="500" required
+                                                      placeholder="Ex.: registrada no rodeiro, mas o defeito é no motor."></textarea>
+                                            <button type="submit">Cancelar pendência</button>
+                                        </form>
+                                    </details>
                                 @endif
                             </td>
                         </tr>

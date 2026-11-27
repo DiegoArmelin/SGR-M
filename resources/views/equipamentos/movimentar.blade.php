@@ -44,7 +44,7 @@
             </div>
             <div class="form-group">
                 <label class="form-label" for="data_movimentacao">Data da substituição *</label>
-                <input class="form-control" type="date" id="data_movimentacao" name="data_movimentacao" value="{{ old('data_movimentacao', date('Y-m-d')) }}" max="{{ date('Y-m-d') }}" required>
+                <input class="form-control" type="date" id="data_movimentacao" name="data_movimentacao" value="{{ old('data_movimentacao', now()->toDateString()) }}" max="{{ now()->toDateString() }}" required>
             </div>
             <div class="form-group">
                 <label class="form-label" for="motivo_retirada_id">Motivo da retirada *</label>

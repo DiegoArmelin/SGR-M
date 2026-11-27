@@ -15,11 +15,18 @@ class PendenciaEquipamento extends Model
         'eixo_id', 'rodeiro_id', 'motor_id', 'motivo_retirada_id', 'descricao',
         'observacoes', 'prioridade', 'situacao',
         'registrado_por', 'resolvida_em', 'observacoes_resolucao',
+        'cancelada_em', 'cancelada_por', 'motivo_cancelamento',
     ];
 
     protected function casts(): array
     {
-        return ['resolvida_em' => 'datetime'];
+        return ['resolvida_em' => 'datetime', 'cancelada_em' => 'datetime'];
+    }
+
+    /** Administrador que cancelou a pendência registrada por engano. */
+    public function canceladaPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelada_por');
     }
 
     /** Motivo do catálogo; registros antigos podem não possuir essa referência. */

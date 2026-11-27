@@ -73,7 +73,9 @@ class DashboardGerencialService
             'atual' => [$atualInicio, $hoje],
             'anterior' => [$anteriorInicio, $anteriorFim],
         ] as $janela => [$inicioPeriodo, $fimPeriodo]) {
-            $base = DB::table('pendencias_equipamentos as p');
+            // Pendências canceladas foram registros feitos por engano: não
+            // contam como aberturas nem como encerramentos na tendência.
+            $base = DB::table('pendencias_equipamentos as p')->where('p.situacao', '<>', 'cancelada');
             if ($frota) {
                 $base->join('eixos as e', 'e.id', '=', 'p.eixo_id')
                     ->join('carros as c', 'c.id', '=', 'e.carro_id')

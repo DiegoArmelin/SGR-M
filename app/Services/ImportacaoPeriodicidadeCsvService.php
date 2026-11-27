@@ -24,6 +24,14 @@ class ImportacaoPeriodicidadeCsvService
 {
     private const MAX_LINHAS = 10000;
 
+    /**
+     * Faixa aceita para data_atualizacao. Datas futuras travariam o equipamento
+     * (a regra "somente data mais recente" ignoraria as medições reais), e
+     * datas fora de 1970–2038 nem cabem na coluna TIMESTAMP (erro 500).
+     */
+    private const DATA_MINIMA = '2000-01-01 00:00:00';
+    private const TOLERANCIA_FUTURO_MINUTOS = 5;
+
     private const COLUNAS = [
         'frota', 'trem', 'carro', 'posicao',
         'serie_rodeiro', 'diametro_lr', 'diametro_lo', 'periodicidade',
@@ -61,6 +69,8 @@ class ImportacaoPeriodicidadeCsvService
             $linhas = [];
             $series = ['rodeiro' => [], 'motor' => []];
             $linhaNumero = 1;
+            $dataMinima = Carbon::parse(self::DATA_MINIMA);
+            $dataMaxima = now()->addMinutes(self::TOLERANCIA_FUTURO_MINUTOS);
 
             // Valida todo o arquivo antes de alterar os dados.
             while (($valores = fgetcsv($arquivoAberto, 0, $separador, '"', '\\')) !== false) {
@@ -113,6 +123,13 @@ class ImportacaoPeriodicidadeCsvService
                 }
                 if (!$instante || $instante->format('Y-m-d H:i:s') !== $data) {
                     $this->falhar("Linha {$linhaNumero}: data inexistente.");
+                }
+                if ($instante->greaterThan($dataMaxima)) {
+                    $this->falhar("Linha {$linhaNumero}: data futura ({$instante->format('d/m/Y H:i:s')}); "
+                        . 'a data de atualização não pode ser posterior ao momento da importação.');
+                }
+                if ($instante->lessThan($dataMinima)) {
+                    $this->falhar("Linha {$linhaNumero}: data anterior a 01/01/2000 não é aceita.");
                 }
                 $linha['data_atualizacao'] = $instante;
                 $linha['linha_csv'] = $linhaNumero;
